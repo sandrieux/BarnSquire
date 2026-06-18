@@ -14,16 +14,18 @@ async function main() {
     },
   });
 
-  const barn = await db.barn.upsert({
-    where: { id: "seed-barn-1" },
-    update: {},
-    create: {
-      id: "seed-barn-1",
-      name: "Maple Ridge Farm",
-      address: "123 Barn Lane, Countryside, USA",
-      timezone: "America/New_York",
-    },
-  });
+  // Find an existing seeded barn by name (ids are auto-generated cuids so they
+  // pass the routers' cuid validation), otherwise create one.
+  let barn = await db.barn.findFirst({ where: { name: "Maple Ridge Farm" } });
+  if (!barn) {
+    barn = await db.barn.create({
+      data: {
+        name: "Maple Ridge Farm",
+        address: "123 Barn Lane, Countryside, USA",
+        timezone: "America/New_York",
+      },
+    });
+  }
 
   await db.barnMembership.upsert({
     where: { userId_barnId: { userId: admin.id, barnId: barn.id } },
@@ -35,7 +37,7 @@ async function main() {
     },
   });
 
-  console.log("Seed complete:", { admin: admin.email, barn: barn.name });
+  console.log("Seed complete:", { admin: admin.email, barn: barn.name, barnId: barn.id });
 }
 
 main()
