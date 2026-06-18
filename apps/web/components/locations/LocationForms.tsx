@@ -47,130 +47,173 @@ function FormShell({
   );
 }
 
-export function BuildingForm({ barnId }: { barnId: string }) {
+export function BuildingForm({
+  barnId,
+  editing,
+}: {
+  barnId: string;
+  editing?: { id: string; name: string; notes: string | null };
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
-  const create = trpc.location.createBuilding.useMutation({
-    onSuccess: () => router.push(`/barns/${barnId}/locations`),
-    onError: (e) => setError(e.message),
-  });
+  const back = () => router.push(`/barns/${barnId}/locations`);
+  const create = trpc.location.createBuilding.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const update = trpc.location.updateBuilding.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const isPending = create.isPending || update.isPending;
 
   return (
     <FormShell
-      title="Add building"
-      pending={create.isPending}
+      title={editing ? "Edit building" : "Add building"}
+      pending={isPending}
       error={error}
       onSubmit={(e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
-        create.mutate({
-          barnId,
-          name: form.get("name") as string,
-          notes: (form.get("notes") as string) || undefined,
-        });
+        const name = form.get("name") as string;
+        const notes = (form.get("notes") as string) || undefined;
+        if (editing) update.mutate({ id: editing.id, name, notes });
+        else create.mutate({ barnId, name, notes });
       }}
     >
       <div className="space-y-2">
         <Label htmlFor="name">Building name *</Label>
-        <Input id="name" name="name" required placeholder="Main Barn" />
+        <Input id="name" name="name" required defaultValue={editing?.name} placeholder="Main Barn" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>
-        <Textarea id="notes" name="notes" rows={2} />
+        <Textarea id="notes" name="notes" rows={2} defaultValue={editing?.notes ?? ""} />
       </div>
     </FormShell>
   );
 }
 
-export function StallForm({ barnId, buildingId }: { barnId: string; buildingId: string }) {
+export function StallForm({
+  barnId,
+  buildingId,
+  editing,
+}: {
+  barnId: string;
+  buildingId?: string;
+  editing?: { id: string; name: string; type: "STANDARD" | "PANIC"; maxCapacity: number; notes: string | null };
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
-  const create = trpc.location.createStall.useMutation({
-    onSuccess: () => router.push(`/barns/${barnId}/locations`),
-    onError: (e) => setError(e.message),
-  });
+  const back = () => router.push(`/barns/${barnId}/locations`);
+  const create = trpc.location.createStall.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const update = trpc.location.updateStall.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const isPending = create.isPending || update.isPending;
 
   return (
     <FormShell
-      title="Add stall"
-      pending={create.isPending}
+      title={editing ? "Edit stall" : "Add stall"}
+      pending={isPending}
       error={error}
       onSubmit={(e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
-        create.mutate({
-          buildingId,
+        const base = {
           name: form.get("name") as string,
           type: form.get("type") as "STANDARD" | "PANIC",
           maxCapacity: Number(form.get("maxCapacity")),
           notes: (form.get("notes") as string) || undefined,
-        });
+        };
+        if (editing) update.mutate({ id: editing.id, ...base });
+        else create.mutate({ buildingId: buildingId!, ...base });
       }}
     >
       <div className="space-y-2">
         <Label htmlFor="name">Stall name *</Label>
-        <Input id="name" name="name" required placeholder="Stall 1" />
+        <Input id="name" name="name" required defaultValue={editing?.name} placeholder="Stall 1" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="type">Type</Label>
-        <Select id="type" name="type" defaultValue="STANDARD">
+        <Select id="type" name="type" defaultValue={editing?.type ?? "STANDARD"}>
           <option value="STANDARD">Standard</option>
           <option value="PANIC">Panic (quarantine/isolation)</option>
         </Select>
       </div>
       <div className="space-y-2">
         <Label htmlFor="maxCapacity">Max capacity</Label>
-        <Input id="maxCapacity" name="maxCapacity" type="number" min={1} defaultValue={1} required />
+        <Input
+          id="maxCapacity"
+          name="maxCapacity"
+          type="number"
+          min={1}
+          defaultValue={editing?.maxCapacity ?? 1}
+          required
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>
-        <Textarea id="notes" name="notes" rows={2} />
+        <Textarea id="notes" name="notes" rows={2} defaultValue={editing?.notes ?? ""} />
       </div>
     </FormShell>
   );
 }
 
-export function PastureForm({ barnId }: { barnId: string }) {
+export function PastureForm({
+  barnId,
+  editing,
+}: {
+  barnId: string;
+  editing?: { id: string; name: string; maxCapacity: number; acreage: number | null; notes: string | null };
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
-  const create = trpc.location.createPasture.useMutation({
-    onSuccess: () => router.push(`/barns/${barnId}/locations`),
-    onError: (e) => setError(e.message),
-  });
+  const back = () => router.push(`/barns/${barnId}/locations`);
+  const create = trpc.location.createPasture.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const update = trpc.location.updatePasture.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const isPending = create.isPending || update.isPending;
 
   return (
     <FormShell
-      title="Add pasture"
-      pending={create.isPending}
+      title={editing ? "Edit pasture" : "Add pasture"}
+      pending={isPending}
       error={error}
       onSubmit={(e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
         const acreageStr = form.get("acreage") as string;
-        create.mutate({
-          barnId,
+        const base = {
           name: form.get("name") as string,
           maxCapacity: Number(form.get("maxCapacity")),
           acreage: acreageStr ? Number(acreageStr) : undefined,
           notes: (form.get("notes") as string) || undefined,
-        });
+        };
+        if (editing) update.mutate({ id: editing.id, ...base });
+        else create.mutate({ barnId, ...base });
       }}
     >
       <div className="space-y-2">
         <Label htmlFor="name">Pasture name *</Label>
-        <Input id="name" name="name" required placeholder="North Field" />
+        <Input id="name" name="name" required defaultValue={editing?.name} placeholder="North Field" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="maxCapacity">Max capacity</Label>
-        <Input id="maxCapacity" name="maxCapacity" type="number" min={1} defaultValue={10} required />
+        <Input
+          id="maxCapacity"
+          name="maxCapacity"
+          type="number"
+          min={1}
+          defaultValue={editing?.maxCapacity ?? 10}
+          required
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="acreage">Acreage</Label>
-        <Input id="acreage" name="acreage" type="number" step="0.1" min={0} placeholder="5.0" />
+        <Input
+          id="acreage"
+          name="acreage"
+          type="number"
+          step="0.1"
+          min={0}
+          defaultValue={editing?.acreage ?? ""}
+          placeholder="5.0"
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>
-        <Textarea id="notes" name="notes" rows={2} />
+        <Textarea id="notes" name="notes" rows={2} defaultValue={editing?.notes ?? ""} />
       </div>
     </FormShell>
   );
