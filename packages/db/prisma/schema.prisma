@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth (NextAuth.js v5 compatible) ────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  barnMemberships BarnMembership[]
+  auditLogs       AuditLog[]
+  taskCompletions TaskCompletion[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Barn & Roles ─────────────────────────────────────────────────────────────
+
+enum BarnRole {
+  GLOBAL_ADMIN
+  BARN_MANAGER
+  CARETAKER
+}
+
+model Barn {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  timezone  String   @default("America/New_York")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships  BarnMembership[]
+  buildings    Building[]
+  pastures     Pasture[]
+  animals      Animal[]
+  appointments Appointment[]
+}
+
+model BarnMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  barnId    String
+  role      BarnRole
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barn Barn @relation(fields: [barnId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, barnId])
+}
+
+// ─── Location Hierarchy ───────────────────────────────────────────────────────
+
+model Building {
+  id        String   @id @default(cuid())
+  barnId    String
+  name      String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  barn   Barn    @relation(fields: [barnId], references: [id], onDelete: Cascade)
+  stalls Stall[]
+}
+
+enum StallType {
+  STANDARD
+  PANIC
+}
+
+model Stall {
+  id          String    @id @default(cuid())
+  buildingId  String
+  name        String
+  type        StallType @default(STANDARD)
+  maxCapacity Int       @default(1)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  building          Building       @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  homeAnimals       Animal[]       @relation("HomeStall")
+  turnoutEventsFrom TurnoutEvent[] @relation("TurnoutFromStall")
+  turnoutEventsTo   TurnoutEvent[] @relation("TurnoutToStall")
+}
+
+model Pasture {
+  id          String   @id @default(cuid())
+  barnId      String
+  name        String
+  maxCapacity Int      @default(10)
+  acreage     Float?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  barn              Barn           @relation(fields: [barnId], references: [id], onDelete: Cascade)
+  homeAnimals       Animal[]       @relation("HomePasture")
+  turnoutEventsFrom TurnoutEvent[] @relation("TurnoutFromPasture")
+  turnoutEventsTo   TurnoutEvent[] @relation("TurnoutToPasture")
+}
+
+// ─── Animals ──────────────────────────────────────────────────────────────────
+
+enum AnimalSize {
+  MINI
+  SMALL
+  MEDIUM
+  LARGE
+  DRAFT
+}
+
+model Animal {
+  id             String     @id @default(cuid())
+  barnId         String
+  name           String
+  species        String     @default("horse")
+  breed          String?
+  size           AnimalSize @default(MEDIUM)
+  birthDate      DateTime?
+  color          String?
+  markings       String?
+  microchipId    String?
+  registrationId String?
+  notes          String?
+  profilePhotoId String?
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  homeStallId   String?
+  homePastureId String?
+
+  barn            Barn              @relation(fields: [barnId], references: [id], onDelete: Cascade)
+  homeStall       Stall?            @relation("HomeStall", fields: [homeStallId], references: [id])
+  homePasture     Pasture?          @relation("HomePasture", fields: [homePastureId], references: [id])
+  mediaFiles      MediaFile[]
+  feedingSchedules FeedingSchedule[]
+  appointments    Appointment[]
+  turnoutEvents   TurnoutEvent[]
+  taskCompletions TaskCompletion[]
+}
+
+model MediaFile {
+  id         String   @id @default(cuid())
+  animalId   String
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  caption    String?
+  takenAt    DateTime?
+  createdAt  DateTime @default(now())
+
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+}
+
+// ─── Feeding Schedules ────────────────────────────────────────────────────────
+
+enum TimeSlot {
+  MORNING
+  LUNCH
+  EVENING
+  CUSTOM
+}
+
+model FeedingSchedule {
+  id           String    @id @default(cuid())
+  animalId     String
+  feedType     String
+  quantity     String
+  unit         String?
+  slot         TimeSlot
+  customTime   String?
+  instructions String?
+  isMedication Boolean   @default(false)
+  startDate    DateTime
+  endDate      DateTime?
+  repeatDays   Int[]
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  animal      Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  completions TaskCompletion[]
+}
+
+// ─── Appointments ─────────────────────────────────────────────────────────────
+
+enum AppointmentType {
+  VET
+  FARRIER
+  DENTAL
+  CHIRO
+  GROOMING
+  OTHER
+}
+
+model Appointment {
+  id           String          @id @default(cuid())
+  barnId       String
+  animalId     String
+  type         AppointmentType
+  title        String
+  description  String?
+  scheduledAt  DateTime
+  durationMins Int?
+  providerName String?
+  cost         Decimal?        @db.Decimal(10, 2)
+  notes        String?
+  isCompleted  Boolean         @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  barn        Barn                  @relation(fields: [barnId], references: [id], onDelete: Cascade)
+  animal      Animal                @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  reminders   AppointmentReminder[]
+  completions TaskCompletion[]
+}
+
+model AppointmentReminder {
+  id             String          @id @default(cuid())
+  appointmentId  String?
+  animalId       String?
+  barnId         String?
+  type           AppointmentType
+  title          String
+  repeatWeeks    Int
+  lastRemindedAt DateTime?
+  nextRemindAt   DateTime
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+}
+
+// ─── Turnout Scheduling ───────────────────────────────────────────────────────
+
+model TurnoutEvent {
+  id            String   @id @default(cuid())
+  animalId      String
+  fromStallId   String?
+  fromPastureId String?
+  toStallId     String?
+  toPastureId   String?
+  startTime     DateTime
+  endTime       DateTime
+  isRecurring   Boolean  @default(false)
+  repeatDays    Int[]
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  animal      Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  fromStall   Stall?           @relation("TurnoutFromStall", fields: [fromStallId], references: [id])
+  toStall     Stall?           @relation("TurnoutToStall", fields: [toStallId], references: [id])
+  fromPasture Pasture?         @relation("TurnoutFromPasture", fields: [fromPastureId], references: [id])
+  toPasture   Pasture?         @relation("TurnoutToPasture", fields: [toPastureId], references: [id])
+  completions TaskCompletion[]
+}
+
+// ─── Daily Task Tracking ──────────────────────────────────────────────────────
+
+enum TaskType {
+  FEEDING
+  MEDICATION
+  APPOINTMENT
+  TURNOUT
+}
+
+model TaskCompletion {
+  id                String    @id @default(cuid())
+  taskType          TaskType
+  scheduledDate     DateTime  @db.Date
+  completedAt       DateTime?
+  completedByUserId String?
+  notes             String?
+  skipped           Boolean   @default(false)
+  skipReason        String?
+  createdAt         DateTime  @default(now())
+
+  feedingScheduleId String?
+  appointmentId     String?
+  turnoutEventId    String?
+  animalId          String
+
+  feedingSchedule FeedingSchedule? @relation(fields: [feedingScheduleId], references: [id])
+  appointment     Appointment?     @relation(fields: [appointmentId], references: [id])
+  turnoutEvent    TurnoutEvent?    @relation(fields: [turnoutEventId], references: [id])
+  animal          Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  completedBy     User?            @relation(fields: [completedByUserId], references: [id])
+
+  @@unique([feedingScheduleId, scheduledDate])
+  @@unique([appointmentId, scheduledDate])
+  @@unique([turnoutEventId, scheduledDate])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  barnId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}

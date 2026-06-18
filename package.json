@@ -1,0 +1,27 @@
+{
+  "name": "barnsquire",
+  "private": true,
+  "packageManager": "pnpm@10.34.3",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "db:push": "pnpm --filter @barnsquire/db db:push",
+    "db:migrate": "pnpm --filter @barnsquire/db db:migrate",
+    "db:studio": "pnpm --filter @barnsquire/db db:studio",
+    "db:generate": "pnpm --filter @barnsquire/db db:generate",
+    "db:seed": "pnpm --filter @barnsquire/db db:seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "esbuild", "prisma", "sharp", "unrs-resolver"]
+  }
+}

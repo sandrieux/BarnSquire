@@ -1,0 +1,174 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { createServerCaller } from "@/lib/trpc/server";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MapPin, Calendar, Edit } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+
+export default async function AnimalProfilePage({
+  params,
+}: {
+  params: Promise<{ barnId: string; animalId: string }>;
+}) {
+  const session = await auth();
+  if (!session) redirect("/login");
+
+  const { barnId, animalId } = await params;
+  const caller = await createServerCaller();
+  const [animal, feedings, appointments] = await Promise.all([
+    caller.animal.get({ id: animalId }),
+    caller.feeding.list({ animalId }),
+    caller.appointment.list({ barnId, animalId, upcoming: true }),
+  ]);
+
+  const homeLocation = animal.homeStall
+    ? `${animal.homeStall.building?.name} / ${animal.homeStall.name}`
+    : animal.homePasture?.name ?? "No location assigned";
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-4">
+          {animal.profilePhotoUrl ? (
+            <div className="relative h-20 w-20 rounded-full overflow-hidden border shrink-0">
+              <Image
+                src={animal.profilePhotoUrl}
+                alt={animal.name}
+                fill
+                sizes="80px"
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          ) : (
+            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center text-2xl font-bold text-muted-foreground shrink-0">
+              {animal.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold">{animal.name}</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {animal.breed && <span className="text-muted-foreground">{animal.breed}</span>}
+              <Badge variant="secondary">{animal.size}</Badge>
+              {animal.color && <Badge variant="outline">{animal.color}</Badge>}
+            </div>
+          </div>
+        </div>
+        <Button variant="outline" asChild size="sm">
+          <Link href={`/barns/${barnId}/animals/${animalId}/edit`}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Details */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <Row label="Location">
+              <MapPin className="h-3.5 w-3.5 inline mr-1" />
+              {homeLocation}
+            </Row>
+            {animal.birthDate && (
+              <Row label="Born">
+                <Calendar className="h-3.5 w-3.5 inline mr-1" />
+                {formatDate(animal.birthDate)}
+              </Row>
+            )}
+            {animal.markings && <Row label="Markings">{animal.markings}</Row>}
+            {animal.microchipId && <Row label="Microchip">{animal.microchipId}</Row>}
+            {animal.registrationId && <Row label="Registration">{animal.registrationId}</Row>}
+            {animal.notes && <Row label="Notes">{animal.notes}</Row>}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming appointments */}
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Upcoming appointments</CardTitle>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/barns/${barnId}/animals/${animalId}/appointments`}>View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {appointments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming appointments.</p>
+            ) : (
+              <ul className="space-y-2">
+                {appointments.slice(0, 3).map((appt: typeof appointments[number]) => (
+                  <li key={appt.id} className="text-sm flex justify-between">
+                    <span>{appt.title}</span>
+                    <span className="text-muted-foreground">{formatDate(appt.scheduledAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Feeding schedules */}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Feeding schedules</CardTitle>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/barns/${barnId}/animals/${animalId}/feeding`}>Manage</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {feedings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No feeding schedules yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {feedings.map((f: typeof feedings[number]) => (
+                <li key={f.id} className="text-sm flex justify-between">
+                  <span>
+                    <Badge variant={f.isMedication ? "warning" : "success"} className="mr-2">
+                      {f.slot}
+                    </Badge>
+                    {f.feedType} — {f.quantity}{f.unit ? " " + f.unit : ""}
+                  </span>
+                  {!f.isActive && <Badge variant="outline">Ended</Badge>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick links */}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/barns/${barnId}/animals/${animalId}/feeding`}>Feeding</Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/barns/${barnId}/animals/${animalId}/appointments`}>Appointments</Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/barns/${barnId}/animals/${animalId}/turnout`}>Turnout</Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/barns/${barnId}/animals/${animalId}/photos`}>Photos</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-muted-foreground w-28 shrink-0">{label}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
