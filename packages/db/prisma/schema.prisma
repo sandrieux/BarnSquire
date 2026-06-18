@@ -293,10 +293,9 @@ model TurnoutEvent {
   fromPastureId String?
   toStallId     String?
   toPastureId   String?
-  startTime     DateTime
-  endTime       DateTime
-  isRecurring   Boolean  @default(false)
-  repeatDays    Int[]
+  startTime     String   // time of day, "HH:MM"
+  endTime       String   // time of day, "HH:MM"
+  repeatDays    Int[]    // ISO weekdays this window applies to (1=Mon..7=Sun)
   notes         String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
