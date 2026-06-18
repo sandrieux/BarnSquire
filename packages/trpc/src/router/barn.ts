@@ -1,0 +1,119 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { router, protectedProcedure, adminProcedure } from "../trpc";
+import {
+  createBarnSchema,
+  updateBarnSchema,
+  addMemberSchema,
+  updateMemberRoleSchema,
+} from "@barnsquire/validators";
+
+async function assertBarnAccess(
+  db: import("@barnsquire/db").PrismaClient,
+  userId: string,
+  barnId: string,
+  minRole: "CARETAKER" | "BARN_MANAGER" | "GLOBAL_ADMIN" = "CARETAKER"
+) {
+  const roleOrder = { CARETAKER: 0, BARN_MANAGER: 1, GLOBAL_ADMIN: 2 } as const;
+  const membership = await db.barnMembership.findUnique({
+    where: { userId_barnId: { userId, barnId } },
+  });
+  if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+  if (roleOrder[membership.role] < roleOrder[minRole]) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return membership;
+}
+
+export const barnRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const memberships = await ctx.db.barnMembership.findMany({
+      where: { userId: ctx.session.user.id },
+      include: { barn: true },
+      orderBy: { barn: { name: "asc" } },
+    });
+    return memberships.map((m) => ({ ...m.barn, role: m.role }));
+  }),
+
+  get: protectedProcedure
+    .input(z.object({ barnId: z.string().cuid() }))
+    .query(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
+      const barn = await ctx.db.barn.findUnique({ where: { id: input.barnId } });
+      if (!barn) throw new TRPCError({ code: "NOT_FOUND" });
+      return barn;
+    }),
+
+  create: protectedProcedure
+    .input(createBarnSchema)
+    .mutation(async ({ ctx, input }) => {
+      const barn = await ctx.db.barn.create({ data: input });
+      await ctx.db.barnMembership.create({
+        data: { userId: ctx.session.user.id, barnId: barn.id, role: "GLOBAL_ADMIN" },
+      });
+      return barn;
+    }),
+
+  update: protectedProcedure
+    .input(updateBarnSchema.extend({ barnId: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const { barnId, ...data } = input;
+      await assertBarnAccess(ctx.db, ctx.session.user.id, barnId, "BARN_MANAGER");
+      return ctx.db.barn.update({ where: { id: barnId }, data });
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ barnId: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.barn.delete({ where: { id: input.barnId } });
+    }),
+
+  listMembers: protectedProcedure
+    .input(z.object({ barnId: z.string().cuid() }))
+    .query(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      return ctx.db.barnMembership.findMany({
+        where: { barnId: input.barnId },
+        include: { user: { select: { id: true, name: true, email: true, image: true } } },
+        orderBy: { createdAt: "asc" },
+      });
+    }),
+
+  addMember: protectedProcedure
+    .input(addMemberSchema)
+    .mutation(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      const user = await ctx.db.user.findUnique({ where: { email: input.email } });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      const existing = await ctx.db.barnMembership.findUnique({
+        where: { userId_barnId: { userId: user.id, barnId: input.barnId } },
+      });
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member" });
+      return ctx.db.barnMembership.create({
+        data: { userId: user.id, barnId: input.barnId, role: input.role },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+    }),
+
+  updateMemberRole: protectedProcedure
+    .input(updateMemberRoleSchema)
+    .mutation(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      return ctx.db.barnMembership.update({
+        where: { userId_barnId: { userId: input.userId, barnId: input.barnId } },
+        data: { role: input.role },
+      });
+    }),
+
+  removeMember: protectedProcedure
+    .input(z.object({ barnId: z.string().cuid(), userId: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      if (input.userId === ctx.session.user.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot remove yourself" });
+      }
+      return ctx.db.barnMembership.delete({
+        where: { userId_barnId: { userId: input.userId, barnId: input.barnId } },
+      });
+    }),
+});

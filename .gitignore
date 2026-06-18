@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Turbo
+.turbo
+
+# Misc
+.DS_Store
+*.pem
+*.log
+
+# Prisma
+packages/db/node_modules
+
+# Editor
+.vscode
+.idea

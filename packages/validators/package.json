@@ -1,0 +1,14 @@
+{
+  "name": "@barnsquire/validators",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.25.56"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
