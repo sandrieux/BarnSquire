@@ -20,7 +20,10 @@ export const todayRouter = router({
     .input(z.object({ barnId: z.string().cuid(), date: z.string().date() }))
     .query(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
-      const targetDate = new Date(input.date);
+      // Construct local midnight so getDay() yields the correct weekday
+      // (new Date("YYYY-MM-DD") would parse as UTC midnight and shift the day).
+      const [ty, tm, td] = input.date.split("-").map(Number);
+      const targetDate = new Date(ty!, tm! - 1, td!);
 
       const [animals, feedings, appointments, turnouts, completions] = await Promise.all([
         ctx.db.animal.findMany({
@@ -53,10 +56,7 @@ export const todayRouter = router({
           where: {
             isActive: true,
             animal: { barnId: input.barnId },
-            startTime: {
-              gte: new Date(input.date),
-              lt: new Date(new Date(input.date).setDate(new Date(input.date).getDate() + 1)),
-            },
+            repeatDays: { has: targetDate.getDay() === 0 ? 7 : targetDate.getDay() },
           },
           include: { fromStall: true, toStall: true, fromPasture: true, toPasture: true },
           orderBy: { startTime: "asc" },
@@ -164,15 +164,13 @@ export const todayRouter = router({
         const buildingName = animal.homeStall?.building?.name;
         const group = getOrCreateGroup(groupId, groupName, groupType, buildingName);
         const toName = turnout.toStall?.name ?? turnout.toPasture?.name ?? "?";
-        const startStr = new Date(turnout.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const endStr = new Date(turnout.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         group.tasks.push({
           id: turnout.id,
           taskType: "TURNOUT",
           animalId: turnout.animalId,
           animalName: animal.name,
           label: `Turnout → ${toName}`,
-          detail: `${startStr} – ${endStr}`,
+          detail: `${turnout.startTime} – ${turnout.endTime}`,
           completion: completionMap.get(turnout.id),
         });
       }

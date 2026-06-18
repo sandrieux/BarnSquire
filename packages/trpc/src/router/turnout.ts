@@ -22,12 +22,21 @@ async function assertAnimalBarnAccess(
   return animal;
 }
 
+function isoWeekday(date: Date): number {
+  const d = date.getDay();
+  return d === 0 ? 7 : d;
+}
+
+// Time windows are zero-padded "HH:MM" strings, so lexical comparison is
+// chronological. Two recurring windows clash only when they share a weekday
+// AND their time ranges overlap.
 async function checkTurnoutCapacity(
   db: import("@barnsquire/db").PrismaClient,
   toStallId: string | undefined,
   toPastureId: string | undefined,
-  startTime: Date,
-  endTime: Date,
+  startTime: string,
+  endTime: string,
+  repeatDays: number[],
   excludeEventId?: string
 ) {
   if (toStallId) {
@@ -38,6 +47,7 @@ async function checkTurnoutCapacity(
         toStallId,
         isActive: true,
         id: excludeEventId ? { not: excludeEventId } : undefined,
+        repeatDays: { hasSome: repeatDays },
         startTime: { lt: endTime },
         endTime: { gt: startTime },
       },
@@ -58,6 +68,7 @@ async function checkTurnoutCapacity(
         toPastureId,
         isActive: true,
         id: excludeEventId ? { not: excludeEventId } : undefined,
+        repeatDays: { hasSome: repeatDays },
         startTime: { lt: endTime },
         endTime: { gt: startTime },
       },
@@ -89,20 +100,17 @@ export const turnoutRouter = router({
         await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId, "CARETAKER");
       }
 
-      let dateFilter = {};
-      if (input.date) {
-        const start = new Date(input.date);
-        const end = new Date(input.date);
-        end.setDate(end.getDate() + 1);
-        dateFilter = { startTime: { gte: start, lt: end } };
-      }
+      // When a date is given, only return windows that apply on its weekday.
+      const weekdayFilter = input.date
+        ? { repeatDays: { has: isoWeekday(new Date(input.date)) } }
+        : {};
 
       return ctx.db.turnoutEvent.findMany({
         where: {
           animalId: input.animalId,
           isActive: true,
           ...(input.barnId ? { animal: { barnId: input.barnId } } : {}),
-          ...dateFilter,
+          ...weekdayFilter,
         },
         include: {
           animal: { select: { id: true, name: true } },
@@ -119,7 +127,9 @@ export const turnoutRouter = router({
     .input(createTurnoutEventSchema)
     .mutation(async ({ ctx, input }) => {
       await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId);
-      await checkTurnoutCapacity(ctx.db, input.toStallId, input.toPastureId, input.startTime, input.endTime);
+      await checkTurnoutCapacity(
+        ctx.db, input.toStallId, input.toPastureId, input.startTime, input.endTime, input.repeatDays
+      );
       return ctx.db.turnoutEvent.create({ data: input });
     }),
 
@@ -130,16 +140,18 @@ export const turnoutRouter = router({
       const event = await ctx.db.turnoutEvent.findUnique({ where: { id } });
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
       await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, event.animalId);
-      if (data.toStallId || data.toPastureId) {
-        await checkTurnoutCapacity(
-          ctx.db,
-          data.toStallId ?? undefined,
-          data.toPastureId ?? undefined,
-          data.startTime ?? event.startTime,
-          data.endTime ?? event.endTime,
-          id
-        );
-      }
+
+      const toStallId = data.toStallId ?? event.toStallId ?? undefined;
+      const toPastureId = data.toPastureId ?? event.toPastureId ?? undefined;
+      await checkTurnoutCapacity(
+        ctx.db,
+        toStallId,
+        toPastureId,
+        data.startTime ?? event.startTime,
+        data.endTime ?? event.endTime,
+        data.repeatDays ?? event.repeatDays,
+        id
+      );
       return ctx.db.turnoutEvent.update({ where: { id }, data });
     }),
 
@@ -156,12 +168,21 @@ export const turnoutRouter = router({
     .input(z.object({
       toStallId: z.string().cuid().optional(),
       toPastureId: z.string().cuid().optional(),
-      startTime: z.coerce.date(),
-      endTime: z.coerce.date(),
+      startTime: z.string().regex(/^\d{2}:\d{2}$/),
+      endTime: z.string().regex(/^\d{2}:\d{2}$/),
+      repeatDays: z.array(z.number().int().min(1).max(7)).min(1),
       excludeEventId: z.string().cuid().optional(),
     }))
     .query(async ({ ctx, input }) => {
       const conflicts: string[] = [];
+      const timeWhere = {
+        isActive: true,
+        id: input.excludeEventId ? { not: input.excludeEventId } : undefined,
+        repeatDays: { hasSome: input.repeatDays },
+        startTime: { lt: input.endTime },
+        endTime: { gt: input.startTime },
+      };
+
       if (input.toStallId) {
         const stall = await ctx.db.stall.findUnique({
           where: { id: input.toStallId },
@@ -169,16 +190,9 @@ export const turnoutRouter = router({
         });
         if (stall) {
           const overlapping = await ctx.db.turnoutEvent.count({
-            where: {
-              toStallId: input.toStallId,
-              isActive: true,
-              id: input.excludeEventId ? { not: input.excludeEventId } : undefined,
-              startTime: { lt: input.endTime },
-              endTime: { gt: input.startTime },
-            },
+            where: { ...timeWhere, toStallId: input.toStallId },
           });
-          const used = stall.homeAnimals.length + overlapping;
-          if (used >= stall.maxCapacity) {
+          if (stall.homeAnimals.length + overlapping >= stall.maxCapacity) {
             conflicts.push(`Stall "${stall.name}" will be at capacity (${stall.maxCapacity})`);
           }
         }
@@ -190,16 +204,9 @@ export const turnoutRouter = router({
         });
         if (pasture) {
           const overlapping = await ctx.db.turnoutEvent.count({
-            where: {
-              toPastureId: input.toPastureId,
-              isActive: true,
-              id: input.excludeEventId ? { not: input.excludeEventId } : undefined,
-              startTime: { lt: input.endTime },
-              endTime: { gt: input.startTime },
-            },
+            where: { ...timeWhere, toPastureId: input.toPastureId },
           });
-          const used = pasture.homeAnimals.length + overlapping;
-          if (used >= pasture.maxCapacity) {
+          if (pasture.homeAnimals.length + overlapping >= pasture.maxCapacity) {
             conflicts.push(`Pasture "${pasture.name}" will be at capacity (${pasture.maxCapacity})`);
           }
         }
