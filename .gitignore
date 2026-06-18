@@ -28,3 +28,6 @@ packages/db/node_modules
 # Editor
 .vscode
 .idea
+
+# TS incremental build info
+*.tsbuildinfo

@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DeleteLocationButton } from "@/components/locations/DeleteLocationButton";
 
 export default async function LocationsPage({ params }: { params: Promise<{ barnId: string }> }) {
   const session = await auth();
@@ -34,8 +35,16 @@ export default async function LocationsPage({ params }: { params: Promise<{ barn
           <h2 className="text-lg font-semibold">Buildings</h2>
           {capacity.buildings.map((building: typeof capacity.buildings[number]) => (
             <Card key={building.id}>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-base">{building.name}</CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Edit building">
+                    <Link href={`/barns/${barnId}/locations/buildings/${building.id}/edit`}>
+                      <Pencil className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <DeleteLocationButton kind="building" id={building.id} name={building.name} />
+                </div>
               </CardHeader>
               <CardContent>
                 {building.stalls.length === 0 ? (
@@ -50,11 +59,19 @@ export default async function LocationsPage({ params }: { params: Promise<{ barn
                           stall.isFull ? "border-destructive/40 bg-destructive/5" : "bg-card"
                         )}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-sm">{stall.name}</span>
-                          <Badge variant={stall.isFull ? "destructive" : "outline"} className="text-xs">
-                            {stall.occupancy}/{stall.maxCapacity}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge variant={stall.isFull ? "destructive" : "outline"} className="text-xs">
+                              {stall.occupancy}/{stall.maxCapacity}
+                            </Badge>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" asChild title="Edit stall">
+                              <Link href={`/barns/${barnId}/locations/stalls/${stall.id}/edit`}>
+                                <Pencil className="h-3 w-3" />
+                              </Link>
+                            </Button>
+                            <DeleteLocationButton kind="stall" id={stall.id} name={stall.name} size="sm" />
+                          </div>
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {stall.homeAnimals.map((a: { id: string; name: string }) => a.name).join(", ") || "Empty"}
@@ -94,11 +111,19 @@ export default async function LocationsPage({ params }: { params: Promise<{ barn
             {capacity.pastures.map((pasture: typeof capacity.pastures[number]) => (
               <Card key={pasture.id} className={cn(pasture.isFull && "border-destructive/40")}>
                 <CardContent className="p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{pasture.name}</span>
-                    <Badge variant={pasture.isFull ? "destructive" : "outline"}>
-                      {pasture.occupancy}/{pasture.maxCapacity}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge variant={pasture.isFull ? "destructive" : "outline"}>
+                        {pasture.occupancy}/{pasture.maxCapacity}
+                      </Badge>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" asChild title="Edit pasture">
+                        <Link href={`/barns/${barnId}/locations/pastures/${pasture.id}/edit`}>
+                          <Pencil className="h-3 w-3" />
+                        </Link>
+                      </Button>
+                      <DeleteLocationButton kind="pasture" id={pasture.id} name={pasture.name} size="sm" />
+                    </div>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {pasture.homeAnimals.map((a: { id: string; name: string }) => a.name).join(", ") || "Empty"}
