@@ -76,10 +76,14 @@ default `barnsquire`) via the MinIO console at http://localhost:9001
   in routers via membership/role checks (helpers like `assertBarnAccess` /
   `assertAnimalBarnAccess`). Caretakers complete Today tasks but don't mutate
   schedules.
+- **Locations:** stalls (in a building, type `STANDARD`/`QUARANTINE`), pastures
+  (in a barn), and arenas (work areas; optional `buildingId`, so standalone or
+  inside a building). Arenas have no capacity; exercise schedules reference an
+  arena or pasture (`locationArenaId`/`locationPastureId`).
 - **Capacity is enforced server-side** in mutations (`animal.setHomeLocation`,
   `turnout.create/update`), never trusting the client. `location.deleteStall` /
-  `deleteBuilding` / `deletePasture` refuse to delete occupied locations
-  (`PRECONDITION_FAILED`).
+  `deleteBuilding` / `deletePasture` refuse to delete occupied locations, and
+  `deleteArena` refuses if exercises reference it (`PRECONDITION_FAILED`).
 - **IDs are cuids.** Router inputs validate with `.cuid()`; never seed or hardcode
   non-cuid ids (the seed creates barns with generated cuids for this reason).
 - **Dates over HTTP:** the server caller returns `Date` objects, but client tRPC

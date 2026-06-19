@@ -15,7 +15,7 @@ export const updateBuildingSchema = z.object({
 export const createStallSchema = z.object({
   buildingId: z.string().cuid(),
   name: z.string().min(1).max(100),
-  type: z.enum(["STANDARD", "PANIC"]).default("STANDARD"),
+  type: z.enum(["STANDARD", "QUARANTINE"]).default("STANDARD"),
   maxCapacity: z.number().int().min(1).max(50).default(1),
   notes: z.string().max(500).optional(),
 });
@@ -36,6 +36,19 @@ export const updatePastureSchema = createPastureSchema.omit({ barnId: true }).pa
   id: z.string().cuid(),
 });
 
+export const createArenaSchema = z.object({
+  barnId: z.string().cuid(),
+  buildingId: z.string().cuid().optional(),
+  name: z.string().min(1).max(100),
+  surface: z.string().max(100).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const updateArenaSchema = createArenaSchema.omit({ barnId: true }).partial().extend({
+  id: z.string().cuid(),
+});
+
 export type CreateBuildingInput = z.infer<typeof createBuildingSchema>;
 export type CreateStallInput = z.infer<typeof createStallSchema>;
 export type CreatePastureInput = z.infer<typeof createPastureSchema>;
+export type CreateArenaInput = z.infer<typeof createArenaSchema>;

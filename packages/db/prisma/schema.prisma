@@ -82,6 +82,7 @@ model Barn {
   memberships  BarnMembership[]
   buildings    Building[]
   pastures     Pasture[]
+  arenas       Arena[]
   animals      Animal[]
   appointments Appointment[]
 }
@@ -111,11 +112,12 @@ model Building {
 
   barn   Barn    @relation(fields: [barnId], references: [id], onDelete: Cascade)
   stalls Stall[]
+  arenas Arena[]
 }
 
 enum StallType {
   STANDARD
-  PANIC
+  QUARANTINE
 }
 
 model Stall {
@@ -144,10 +146,11 @@ model Pasture {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  barn              Barn           @relation(fields: [barnId], references: [id], onDelete: Cascade)
-  homeAnimals       Animal[]       @relation("HomePasture")
-  turnoutEventsFrom TurnoutEvent[] @relation("TurnoutFromPasture")
-  turnoutEventsTo   TurnoutEvent[] @relation("TurnoutToPasture")
+  barn              Barn               @relation(fields: [barnId], references: [id], onDelete: Cascade)
+  homeAnimals       Animal[]           @relation("HomePasture")
+  turnoutEventsFrom TurnoutEvent[]     @relation("TurnoutFromPasture")
+  turnoutEventsTo   TurnoutEvent[]     @relation("TurnoutToPasture")
+  exerciseSchedules ExerciseSchedule[] @relation("ExercisePasture")
 }
 
 // ─── Animals ──────────────────────────────────────────────────────────────────
@@ -325,21 +328,40 @@ enum ExerciseType {
 }
 
 model ExerciseSchedule {
-  id         String       @id @default(cuid())
-  animalId   String
-  type       ExerciseType
-  trainer    String?
-  location   String?      // free text, e.g. "Indoor Arena", "Round Pen"
-  startTime  String       // time of day, "HH:MM"
-  endTime    String?      // optional end time, "HH:MM"
-  repeatDays Int[]        // ISO weekdays this applies to (1=Mon..7=Sun)
-  notes      String?
-  isActive   Boolean      @default(true)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id                String       @id @default(cuid())
+  animalId          String
+  type              ExerciseType
+  trainer           String?
+  locationArenaId   String?
+  locationPastureId String?
+  startTime         String       // time of day, "HH:MM"
+  endTime           String?      // optional end time, "HH:MM"
+  repeatDays        Int[]        // ISO weekdays this applies to (1=Mon..7=Sun)
+  notes             String?
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
-  animal      Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  completions TaskCompletion[]
+  animal          Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  locationArena   Arena?           @relation(fields: [locationArenaId], references: [id])
+  locationPasture Pasture?         @relation("ExercisePasture", fields: [locationPastureId], references: [id])
+  completions     TaskCompletion[]
+}
+
+// An exercise/work area; may sit inside a building or stand alone in the barn.
+model Arena {
+  id         String   @id @default(cuid())
+  barnId     String
+  buildingId String?
+  name       String
+  surface    String?  // e.g. "Sand", "Grass", "Rubber"
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  barn      Barn               @relation(fields: [barnId], references: [id], onDelete: Cascade)
+  building  Building?          @relation(fields: [buildingId], references: [id])
+  exercises ExerciseSchedule[]
 }
 
 // ─── Daily Task Tracking ──────────────────────────────────────────────────────
