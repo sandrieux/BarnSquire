@@ -19,6 +19,7 @@ const TASK_COLORS: Record<string, string> = {
   MEDICATION: "bg-orange-50 border-orange-200",
   APPOINTMENT: "bg-blue-50 border-blue-200",
   TURNOUT: "bg-purple-50 border-purple-200",
+  EXERCISE: "bg-amber-50 border-amber-200",
 };
 
 const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "success"> = {
@@ -26,6 +27,7 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
   MEDICATION: "warning",
   APPOINTMENT: "default",
   TURNOUT: "secondary",
+  EXERCISE: "default",
 };
 
 export function TodayClient({
@@ -45,8 +47,8 @@ export function TodayClient({
   const { data: groups = [] } = trpc.today.getDailyView.useQuery({ barnId, date });
 
   const completeTask = trpc.today.completeTask.useMutation({
-    onMutate: ({ feedingScheduleId, appointmentId, turnoutEventId }) => {
-      const key = feedingScheduleId ?? appointmentId ?? turnoutEventId ?? "";
+    onMutate: ({ feedingScheduleId, appointmentId, turnoutEventId, exerciseScheduleId }) => {
+      const key = feedingScheduleId ?? appointmentId ?? turnoutEventId ?? exerciseScheduleId ?? "";
       setOptimisticDone((prev) => new Set([...prev, key]));
     },
     onSuccess: () => utils.today.getDailyView.invalidate(),
@@ -72,6 +74,7 @@ export function TodayClient({
       feedingScheduleId: task.taskType === "FEEDING" || task.taskType === "MEDICATION" ? task.id : undefined,
       appointmentId: task.taskType === "APPOINTMENT" ? task.id : undefined,
       turnoutEventId: task.taskType === "TURNOUT" ? task.id : undefined,
+      exerciseScheduleId: task.taskType === "EXERCISE" ? task.id : undefined,
     });
   }
 

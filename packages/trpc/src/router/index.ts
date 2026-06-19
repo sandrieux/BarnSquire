@@ -5,6 +5,7 @@ import { animalRouter } from "./animal";
 import { feedingRouter } from "./feeding";
 import { appointmentRouter } from "./appointment";
 import { turnoutRouter } from "./turnout";
+import { exerciseRouter } from "./exercise";
 import { todayRouter } from "./today";
 import { mediaRouter } from "./media";
 import { adminRouter } from "./admin";
@@ -18,6 +19,7 @@ export const appRouter = router({
   feeding: feedingRouter,
   appointment: appointmentRouter,
   turnout: turnoutRouter,
+  exercise: exerciseRouter,
   today: todayRouter,
   media: mediaRouter,
   admin: adminRouter,

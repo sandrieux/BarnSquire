@@ -36,8 +36,9 @@ packages/trpc/            routers (src/router/*), context, trpc init, storage.ts
 packages/validators/      shared Zod schemas
 ```
 
-tRPC routers: `barn`, `location`, `animal`, `media`, `feeding`, `appointment`,
-`turnout`, `today`, `admin` (merged in `packages/trpc/src/router/index.ts`).
+tRPC routers: `user`, `barn`, `location`, `animal`, `media`, `feeding`,
+`appointment`, `turnout`, `exercise`, `today`, `admin` (merged in
+`packages/trpc/src/router/index.ts`).
 
 ## Commands
 
@@ -91,10 +92,14 @@ default `barnsquire`) via the MinIO console at http://localhost:9001
 - **Turnout** is a recurring time-of-day window: `startTime`/`endTime` are
   `"HH:MM"` strings (no date) plus `repeatDays`. Conflicts match on overlapping
   time windows AND shared weekdays.
-- **Today view** (`today.getDailyView`) expands feeding/medication/turnout from
-  their repeat rules for the requested date on the fly (no pre-expanded table)
-  and groups tasks by home location. Completion is an append-only
-  `TaskCompletion` ledger.
+- **Exercise** is a recurring time-of-day activity (like turnout): `startTime`
+  required + optional `endTime` (`"HH:MM"`), `repeatDays`, plus `type`/`trainer`/
+  free-text `location`. Managed inline on the animal page; surfaces on Today.
+- **Today view** (`today.getDailyView`) expands feeding/medication/turnout/
+  exercise from their repeat rules for the requested date on the fly (no
+  pre-expanded table) and groups tasks by home location. Completion is an
+  append-only `TaskCompletion` ledger (polymorphic FK per task type; add a new
+  `<x>ScheduleId` column + `@@unique([<x>Id, scheduledDate])` for new task types).
 - **Schema changes:** edit `packages/db/prisma/schema.prisma`, then `pnpm db:push`
   (add `--accept-data-loss` only for intentional destructive dev changes).
 

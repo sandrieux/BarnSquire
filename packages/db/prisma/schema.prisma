@@ -188,6 +188,7 @@ model Animal {
   feedingSchedules FeedingSchedule[]
   appointments    Appointment[]
   turnoutEvents   TurnoutEvent[]
+  exerciseSchedules ExerciseSchedule[]
   taskCompletions TaskCompletion[]
 }
 
@@ -310,6 +311,37 @@ model TurnoutEvent {
   completions TaskCompletion[]
 }
 
+// ─── Exercise Scheduling ──────────────────────────────────────────────────────
+
+enum ExerciseType {
+  RIDING
+  LUNGEING
+  GROUNDWORK
+  TURNOUT_EXERCISE
+  HAND_WALKING
+  TREADMILL
+  SWIMMING
+  OTHER
+}
+
+model ExerciseSchedule {
+  id         String       @id @default(cuid())
+  animalId   String
+  type       ExerciseType
+  trainer    String?
+  location   String?      // free text, e.g. "Indoor Arena", "Round Pen"
+  startTime  String       // time of day, "HH:MM"
+  endTime    String?      // optional end time, "HH:MM"
+  repeatDays Int[]        // ISO weekdays this applies to (1=Mon..7=Sun)
+  notes      String?
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  animal      Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  completions TaskCompletion[]
+}
+
 // ─── Daily Task Tracking ──────────────────────────────────────────────────────
 
 enum TaskType {
@@ -317,6 +349,7 @@ enum TaskType {
   MEDICATION
   APPOINTMENT
   TURNOUT
+  EXERCISE
 }
 
 model TaskCompletion {
@@ -333,17 +366,20 @@ model TaskCompletion {
   feedingScheduleId String?
   appointmentId     String?
   turnoutEventId    String?
+  exerciseScheduleId String?
   animalId          String
 
-  feedingSchedule FeedingSchedule? @relation(fields: [feedingScheduleId], references: [id])
-  appointment     Appointment?     @relation(fields: [appointmentId], references: [id])
-  turnoutEvent    TurnoutEvent?    @relation(fields: [turnoutEventId], references: [id])
-  animal          Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  completedBy     User?            @relation(fields: [completedByUserId], references: [id])
+  feedingSchedule  FeedingSchedule?  @relation(fields: [feedingScheduleId], references: [id])
+  appointment      Appointment?      @relation(fields: [appointmentId], references: [id])
+  turnoutEvent     TurnoutEvent?     @relation(fields: [turnoutEventId], references: [id])
+  exerciseSchedule ExerciseSchedule? @relation(fields: [exerciseScheduleId], references: [id])
+  animal           Animal            @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  completedBy      User?             @relation(fields: [completedByUserId], references: [id])
 
   @@unique([feedingScheduleId, scheduledDate])
   @@unique([appointmentId, scheduledDate])
   @@unique([turnoutEventId, scheduledDate])
+  @@unique([exerciseScheduleId, scheduledDate])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

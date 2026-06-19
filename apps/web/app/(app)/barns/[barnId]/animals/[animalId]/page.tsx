@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/utils";
 import { FeedingManager } from "@/components/feeding/FeedingManager";
 import { AppointmentManager } from "@/components/appointments/AppointmentManager";
 import { TurnoutManager } from "@/components/turnout/TurnoutManager";
+import { ExerciseManager } from "@/components/exercise/ExerciseManager";
 
 export default async function AnimalProfilePage({
   params,
@@ -108,6 +109,9 @@ export default async function AnimalProfilePage({
 
       {/* Turnout — editable table */}
       <TurnoutManager animalId={animalId} capacity={capacity} />
+
+      {/* Exercise — editable table */}
+      <ExerciseManager animalId={animalId} />
 
       {/* Photos */}
       <div className="flex flex-wrap gap-2">
