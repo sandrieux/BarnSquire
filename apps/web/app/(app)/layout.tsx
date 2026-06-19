@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session) redirect("/login");
+  if (session.user?.mustChangePassword) redirect("/change-password");
 
   const caller = await createServerCaller();
   const barns = await caller.barn.list();

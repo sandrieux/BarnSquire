@@ -10,14 +10,15 @@ datasource db {
 // ─── Auth (NextAuth.js v5 compatible) ────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  passwordHash  String?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String    @unique
+  emailVerified      DateTime?
+  passwordHash       String?
+  mustChangePassword Boolean   @default(false)
+  image              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   accounts        Account[]
   sessions        Session[]
