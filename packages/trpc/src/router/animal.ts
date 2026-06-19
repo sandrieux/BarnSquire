@@ -64,7 +64,7 @@ export const animalRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "CARETAKER");
-      return ctx.db.animal.findMany({
+      const animals = await ctx.db.animal.findMany({
         where: {
           barnId: input.barnId,
           isActive: input.activeOnly ? true : undefined,
@@ -77,6 +77,24 @@ export const animalRouter = router({
         },
         orderBy: { name: "asc" },
       });
+
+      // Resolve presigned thumbnail URLs for animals that have a profile photo.
+      const photoIds = animals
+        .map((a) => a.profilePhotoId)
+        .filter((id): id is string => !!id);
+      const photos = photoIds.length
+        ? await ctx.db.mediaFile.findMany({ where: { id: { in: photoIds } } })
+        : [];
+      const keyById = new Map(photos.map((p) => [p.id, p.storageKey]));
+      return Promise.all(
+        animals.map(async (a) => ({
+          ...a,
+          profilePhotoUrl:
+            a.profilePhotoId && keyById.has(a.profilePhotoId)
+              ? await getPresignedViewUrl(keyById.get(a.profilePhotoId)!)
+              : null,
+        }))
+      );
     }),
 
   get: protectedProcedure
