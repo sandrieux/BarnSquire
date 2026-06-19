@@ -2,15 +2,9 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { createServerCaller } from "@/lib/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MembersManager } from "@/components/barn/MembersManager";
 import Link from "next/link";
-
-const ROLE_LABELS: Record<string, string> = {
-  GLOBAL_ADMIN: "Global Admin",
-  BARN_MANAGER: "Barn Manager",
-  CARETAKER: "Caretaker",
-};
 
 export default async function BarnSettingsPage({ params }: { params: Promise<{ barnId: string }> }) {
   const session = await auth();
@@ -18,10 +12,7 @@ export default async function BarnSettingsPage({ params }: { params: Promise<{ b
 
   const { barnId } = await params;
   const caller = await createServerCaller();
-  const [barn, members] = await Promise.all([
-    caller.barn.get({ barnId }),
-    caller.barn.listMembers({ barnId }),
-  ]);
+  const barn = await caller.barn.get({ barnId });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -57,17 +48,7 @@ export default async function BarnSettingsPage({ params }: { params: Promise<{ b
           </Button>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-3">
-            {members.map((m: typeof members[number]) => (
-              <li key={m.id} className="flex items-center justify-between text-sm">
-                <div>
-                  <p className="font-medium">{m.user.name ?? m.user.email}</p>
-                  <p className="text-muted-foreground text-xs">{m.user.email}</p>
-                </div>
-                <Badge variant="secondary">{ROLE_LABELS[m.role] ?? m.role}</Badge>
-              </li>
-            ))}
-          </ul>
+          <MembersManager barnId={barnId} currentUserId={session.user.id} />
         </CardContent>
       </Card>
     </div>
