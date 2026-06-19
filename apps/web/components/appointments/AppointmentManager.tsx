@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Check, Trash2, Pencil, Bell, CalendarClock } from "lucide-react";
+import { Plus, X, Check, Trash2, Pencil, Bell } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { Button } from "@/components/ui/button";
@@ -76,96 +76,89 @@ export function AppointmentManager({ barnId, animalId }: { barnId: string; anima
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : appointments.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+          No appointments yet.
+        </div>
       ) : (
-        <>
-          <Section title="Upcoming" empty="No upcoming appointments.">
-            {upcoming.map((a) => (
-              <AppointmentRow
-                key={a.id}
-                appt={a}
-                onComplete={() => complete.mutate({ id: a.id })}
-                onEdit={() => startEdit(a)}
-                onDelete={() => del.mutate({ id: a.id })}
-              />
-            ))}
-          </Section>
-
-          {past.length > 0 && (
-            <Section title="Past & completed" empty="">
-              {past.map((a) => (
-                <AppointmentRow
-                  key={a.id}
-                  appt={a}
-                  onComplete={() => complete.mutate({ id: a.id })}
-                  onEdit={() => startEdit(a)}
-                  onDelete={() => del.mutate({ id: a.id })}
-                />
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium">Title</th>
+                <th className="px-3 py-2 font-medium">When</th>
+                <th className="px-3 py-2 font-medium">Provider</th>
+                <th className="px-3 py-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...upcoming, ...past].map((appt) => (
+                <tr
+                  key={appt.id}
+                  className={cn("border-b last:border-0 align-top", appt.isCompleted && "opacity-60")}
+                >
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <Badge variant="secondary">{TYPE_LABELS[appt.type]}</Badge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{appt.title}</span>
+                      {appt.isCompleted && <Badge variant="success">Done</Badge>}
+                    </div>
+                    {appt.description && (
+                      <p className="text-xs text-muted-foreground mt-1">{appt.description}</p>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
+                    {formatDate(appt.scheduledAt)}
+                    <br />
+                    {formatTime(appt.scheduledAt)}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {appt.providerName ?? "—"}
+                    {appt.cost != null ? (
+                      <>
+                        <br />${Number(appt.cost).toFixed(2)}
+                      </>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-1 justify-end">
+                      {!appt.isCompleted && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-green-600"
+                          title="Mark complete"
+                          onClick={() => complete.mutate({ id: appt.id })}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(appt)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        title="Delete"
+                        onClick={() => del.mutate({ id: appt.id })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
               ))}
-            </Section>
-          )}
-        </>
+            </tbody>
+          </table>
+        </div>
       )}
 
       <ReminderSection barnId={barnId} animalId={animalId} />
     </div>
-  );
-}
-
-function Section({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
-  const hasChildren = Array.isArray(children) ? children.length > 0 : !!children;
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>
-      {hasChildren ? children : empty ? <p className="text-sm text-muted-foreground">{empty}</p> : null}
-    </div>
-  );
-}
-
-function AppointmentRow({
-  appt,
-  onComplete,
-  onEdit,
-  onDelete,
-}: {
-  appt: Appointment;
-  onComplete: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <Card className={cn(appt.isCompleted && "opacity-60")}>
-      <CardContent className="p-4 flex items-start gap-3">
-        <div className="rounded-full p-2 bg-blue-100 text-blue-700 shrink-0">
-          <CalendarClock className="h-4 w-4" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary">{TYPE_LABELS[appt.type]}</Badge>
-            <span className="font-medium">{appt.title}</span>
-            {appt.isCompleted && <Badge variant="success">Completed</Badge>}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {formatDate(appt.scheduledAt)} at {formatTime(appt.scheduledAt)}
-            {appt.providerName ? ` · ${appt.providerName}` : ""}
-            {appt.cost != null ? ` · $${Number(appt.cost).toFixed(2)}` : ""}
-          </div>
-          {appt.description && <p className="text-xs text-muted-foreground mt-1">{appt.description}</p>}
-        </div>
-        <div className="flex gap-1 shrink-0">
-          {!appt.isCompleted && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" title="Mark complete" onClick={onComplete}>
-              <Check className="h-4 w-4" />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={onEdit}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Delete" onClick={onDelete}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -304,24 +297,51 @@ function ReminderSection({ barnId, animalId }: { barnId: string; animalId: strin
         <ReminderForm barnId={barnId} animalId={animalId} onDone={() => setShowForm(false)} />
       )}
 
-      {animalReminders.length === 0 && !showForm ? (
-        <p className="text-sm text-muted-foreground">
-          No reminders. E.g. &ldquo;Schedule farrier every 6 weeks&rdquo;.
-        </p>
+      {animalReminders.length === 0 ? (
+        !showForm && (
+          <p className="text-sm text-muted-foreground">
+            No reminders. E.g. &ldquo;Schedule farrier every 6 weeks&rdquo;.
+          </p>
+        )
       ) : (
-        animalReminders.map((r) => (
-          <Card key={r.id}>
-            <CardContent className="p-3 flex items-center justify-between gap-2">
-              <div className="text-sm">
-                <span className="font-medium">{r.title}</span>
-                <span className="text-muted-foreground"> · every {r.repeatWeeks} weeks · next {formatDate(r.nextRemindAt)}</span>
-              </div>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => del.mutate({ id: r.id })}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
-        ))
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium">Reminder</th>
+                <th className="px-3 py-2 font-medium">Every</th>
+                <th className="px-3 py-2 font-medium">Next</th>
+                <th className="px-3 py-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {animalReminders.map((r) => (
+                <tr key={r.id} className="border-b last:border-0">
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <Badge variant="secondary">{TYPE_LABELS[r.type]}</Badge>
+                  </td>
+                  <td className="px-3 py-2 font-medium">{r.title}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{r.repeatWeeks} wks</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatDate(r.nextRemindAt)}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        title="Delete reminder"
+                        onClick={() => del.mutate({ id: r.id })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

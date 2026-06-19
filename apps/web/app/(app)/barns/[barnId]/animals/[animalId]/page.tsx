@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Calendar, Edit, ChevronLeft } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { FeedingManager } from "@/components/feeding/FeedingManager";
+import { AppointmentManager } from "@/components/appointments/AppointmentManager";
+import { TurnoutManager } from "@/components/turnout/TurnoutManager";
 
 export default async function AnimalProfilePage({
   params,
@@ -20,9 +22,9 @@ export default async function AnimalProfilePage({
 
   const { barnId, animalId } = await params;
   const caller = await createServerCaller();
-  const [animal, appointments] = await Promise.all([
+  const [animal, capacity] = await Promise.all([
     caller.animal.get({ id: animalId }),
-    caller.appointment.list({ barnId, animalId, upcoming: true }),
+    caller.location.getCapacityStatus({ barnId }),
   ]);
 
   const homeLocation = animal.homeStall
@@ -75,66 +77,40 @@ export default async function AnimalProfilePage({
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Details */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row label="Location">
-              <MapPin className="h-3.5 w-3.5 inline mr-1" />
-              {homeLocation}
+      {/* Details */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <Row label="Location">
+            <MapPin className="h-3.5 w-3.5 inline mr-1" />
+            {homeLocation}
+          </Row>
+          {animal.birthDate && (
+            <Row label="Born">
+              <Calendar className="h-3.5 w-3.5 inline mr-1" />
+              {formatDate(animal.birthDate)}
             </Row>
-            {animal.birthDate && (
-              <Row label="Born">
-                <Calendar className="h-3.5 w-3.5 inline mr-1" />
-                {formatDate(animal.birthDate)}
-              </Row>
-            )}
-            {animal.markings && <Row label="Markings">{animal.markings}</Row>}
-            {animal.microchipId && <Row label="Microchip">{animal.microchipId}</Row>}
-            {animal.registrationId && <Row label="Registration">{animal.registrationId}</Row>}
-            {animal.notes && <Row label="Notes">{animal.notes}</Row>}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming appointments */}
-        <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Upcoming appointments</CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={`/barns/${barnId}/animals/${animalId}/appointments`}>View all</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {appointments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No upcoming appointments.</p>
-            ) : (
-              <ul className="space-y-2">
-                {appointments.slice(0, 3).map((appt: typeof appointments[number]) => (
-                  <li key={appt.id} className="text-sm flex justify-between">
-                    <span>{appt.title}</span>
-                    <span className="text-muted-foreground">{formatDate(appt.scheduledAt)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          )}
+          {animal.markings && <Row label="Markings">{animal.markings}</Row>}
+          {animal.microchipId && <Row label="Microchip">{animal.microchipId}</Row>}
+          {animal.registrationId && <Row label="Registration">{animal.registrationId}</Row>}
+          {animal.notes && <Row label="Notes">{animal.notes}</Row>}
+        </CardContent>
+      </Card>
 
       {/* Feeding schedules — editable table */}
       <FeedingManager animalId={animalId} />
 
-      {/* Quick links */}
+      {/* Appointments — editable table */}
+      <AppointmentManager barnId={barnId} animalId={animalId} />
+
+      {/* Turnout — editable table */}
+      <TurnoutManager animalId={animalId} capacity={capacity} />
+
+      {/* Photos */}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/barns/${barnId}/animals/${animalId}/appointments`}>Appointments</Link>
-        </Button>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/barns/${barnId}/animals/${animalId}/turnout`}>Turnout</Link>
-        </Button>
         <Button variant="outline" size="sm" asChild>
           <Link href={`/barns/${barnId}/animals/${animalId}/photos`}>Photos</Link>
         </Button>
