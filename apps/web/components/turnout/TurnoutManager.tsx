@@ -132,41 +132,52 @@ export function TurnoutManager({
           No turnout scheduled. e.g. move to a pasture between 12:00–14:00.
         </div>
       ) : (
-        <div className="space-y-2">
-          {events.map((ev) => (
-            <Card key={ev.id}>
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="rounded-full p-2 bg-purple-100 text-purple-700 shrink-0">
-                  <MoveRight className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap text-sm">
-                    <span className="font-medium">{locationName(ev, "from")}</span>
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-medium">{locationName(ev, "to")}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {ev.startTime} – {ev.endTime} · {daysLabel(ev.repeatDays)}
-                  </div>
-                  {ev.notes && <p className="text-xs text-muted-foreground mt-1">{ev.notes}</p>}
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(ev)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    title="Cancel turnout"
-                    onClick={() => del.mutate({ id: ev.id })}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Route</th>
+                <th className="px-3 py-2 font-medium">Time</th>
+                <th className="px-3 py-2 font-medium">Days</th>
+                <th className="px-3 py-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((ev) => (
+                <tr key={ev.id} className="border-b last:border-0 align-top">
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <MoveRight className="h-4 w-4 text-purple-600 shrink-0" />
+                      <span className="font-medium">{locationName(ev, "from")}</span>
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium">{locationName(ev, "to")}</span>
+                    </div>
+                    {ev.notes && <p className="text-xs text-muted-foreground mt-1">{ev.notes}</p>}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {ev.startTime} – {ev.endTime}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{daysLabel(ev.repeatDays)}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-1 justify-end">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(ev)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        title="Cancel turnout"
+                        onClick={() => del.mutate({ id: ev.id })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
