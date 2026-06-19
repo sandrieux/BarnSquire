@@ -111,7 +111,10 @@ export default async function AnimalProfilePage({
       <TurnoutManager animalId={animalId} capacity={capacity} />
 
       {/* Exercise — editable table */}
-      <ExerciseManager animalId={animalId} />
+      <ExerciseManager
+        animalId={animalId}
+        locations={{ pastures: capacity.pastures, arenas: capacity.arenas }}
+      />
 
       {/* Photos */}
       <div className="flex flex-wrap gap-2">

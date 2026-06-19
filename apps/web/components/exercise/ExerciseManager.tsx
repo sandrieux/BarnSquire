@@ -15,6 +15,20 @@ import { cn } from "@/lib/utils";
 
 type Exercise = RouterOutputs["exercise"]["list"][number];
 
+// Minimal shape for the location dropdown (arenas + pastures), kept structural
+// so the server caller's richer result (with Date fields) is assignable.
+type LocationOptions = {
+  pastures: Array<{ id: string; name: string }>;
+  arenas: Array<{ id: string; name: string }>;
+};
+
+// Encode a location selection as "arena:<id>" or "pasture:<id>"
+function parseLocation(value: string): { arenaId?: string; pastureId?: string } {
+  if (!value) return {};
+  const [kind, id] = value.split(":");
+  return kind === "arena" ? { arenaId: id } : { pastureId: id };
+}
+
 const EXERCISE_TYPES = [
   "RIDING",
   "LUNGEING",
@@ -53,7 +67,13 @@ function daysLabel(days: number[]) {
   return days.map((d) => WEEKDAYS.find((w) => w.value === d)?.label).join(", ");
 }
 
-export function ExerciseManager({ animalId }: { animalId: string }) {
+export function ExerciseManager({
+  animalId,
+  locations,
+}: {
+  animalId: string;
+  locations: LocationOptions;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Exercise | null>(null);
   const utils = trpc.useUtils();
@@ -84,7 +104,9 @@ export function ExerciseManager({ animalId }: { animalId: string }) {
         )}
       </div>
 
-      {showForm && <ExerciseForm animalId={animalId} editing={editing} onDone={closeForm} />}
+      {showForm && (
+        <ExerciseForm animalId={animalId} locations={locations} editing={editing} onDone={closeForm} />
+      )}
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -119,7 +141,9 @@ export function ExerciseManager({ animalId }: { animalId: string }) {
                     {ex.startTime}
                     {ex.endTime ? ` – ${ex.endTime}` : ""}
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">{ex.location ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {ex.locationArena?.name ?? ex.locationPasture?.name ?? "—"}
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{ex.trainer ?? "—"}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{daysLabel(ex.repeatDays)}</td>
                   <td className="px-3 py-2">
@@ -150,10 +174,12 @@ export function ExerciseManager({ animalId }: { animalId: string }) {
 
 function ExerciseForm({
   animalId,
+  locations,
   editing,
   onDone,
 }: {
   animalId: string;
+  locations: LocationOptions;
   editing: Exercise | null;
   onDone: () => void;
 }) {
@@ -162,6 +188,13 @@ function ExerciseForm({
   const [startTime, setStartTime] = useState(editing?.startTime ?? "09:00");
   const [endTime, setEndTime] = useState(editing?.endTime ?? "");
   const [repeatDays, setRepeatDays] = useState<number[]>(editing?.repeatDays ?? ALL_DAYS);
+  const [locationValue, setLocationValue] = useState(
+    editing?.locationArenaId
+      ? `arena:${editing.locationArenaId}`
+      : editing?.locationPastureId
+      ? `pasture:${editing.locationPastureId}`
+      : ""
+  );
 
   const onSuccess = () => {
     utils.exercise.list.invalidate({ animalId });
@@ -183,10 +216,12 @@ function ExerciseForm({
     if (repeatDays.length === 0) return setError("Pick at least one day");
     if (endTime && endTime <= startTime) return setError("End time must be after start time");
     const form = new FormData(e.currentTarget);
+    const loc = parseLocation(locationValue);
     const base = {
       type: form.get("type") as (typeof EXERCISE_TYPES)[number],
       trainer: (form.get("trainer") as string) || undefined,
-      location: (form.get("location") as string) || undefined,
+      locationArenaId: loc.arenaId,
+      locationPastureId: loc.pastureId,
       startTime,
       endTime: endTime || undefined,
       repeatDays,
@@ -222,7 +257,23 @@ function ExerciseForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <Input id="location" name="location" defaultValue={editing?.location ?? ""} placeholder="Indoor Arena" />
+              <Select id="location" value={locationValue} onChange={(e) => setLocationValue(e.target.value)}>
+                <option value="">— None —</option>
+                {locations.arenas.length > 0 && (
+                  <optgroup label="Arenas">
+                    {locations.arenas.map((a) => (
+                      <option key={a.id} value={`arena:${a.id}`}>{a.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {locations.pastures.length > 0 && (
+                  <optgroup label="Pastures">
+                    {locations.pastures.map((p) => (
+                      <option key={p.id} value={`pasture:${p.id}`}>{p.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">

@@ -29,6 +29,10 @@ export const exerciseRouter = router({
       await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId, "CARETAKER");
       return ctx.db.exerciseSchedule.findMany({
         where: { animalId: input.animalId, isActive: true },
+        include: {
+          locationArena: { select: { id: true, name: true } },
+          locationPasture: { select: { id: true, name: true } },
+        },
         orderBy: { startTime: "asc" },
       });
     }),

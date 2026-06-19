@@ -68,6 +68,10 @@ export const todayRouter = router({
             animal: { barnId: input.barnId, isActive: true },
             repeatDays: { has: weekday },
           },
+          include: {
+            locationArena: { select: { name: true } },
+            locationPasture: { select: { name: true } },
+          },
           orderBy: { startTime: "asc" },
         }),
         ctx.db.taskCompletion.findMany({
@@ -194,8 +198,9 @@ export const todayRouter = router({
         const group = getOrCreateGroup(groupId, groupName, groupType, buildingName);
         const typeLabel = exercise.type.replace(/_/g, " ").toLowerCase();
         const time = exercise.endTime ? `${exercise.startTime} – ${exercise.endTime}` : exercise.startTime;
+        const locationName = exercise.locationArena?.name ?? exercise.locationPasture?.name;
         const detailParts = [time];
-        if (exercise.location) detailParts.push(exercise.location);
+        if (locationName) detailParts.push(locationName);
         if (exercise.trainer) detailParts.push(exercise.trainer);
         group.tasks.push({
           id: exercise.id,

@@ -138,11 +138,53 @@ export default async function LocationsPage({ params }: { params: Promise<{ barn
         )}
       </div>
 
-      {capacity.buildings.length === 0 && capacity.pastures.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          No locations yet. Add a building or pasture to organize your animals.
+      {/* Arenas */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Arenas</h2>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/barns/${barnId}/locations/new-arena`}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add arena
+            </Link>
+          </Button>
         </div>
-      )}
+        {capacity.arenas.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No arenas yet.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {capacity.arenas.map((arena: typeof capacity.arenas[number]) => (
+              <Card key={arena.id}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{arena.name}</span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" asChild title="Edit arena">
+                        <Link href={`/barns/${barnId}/locations/arenas/${arena.id}/edit`}>
+                          <Pencil className="h-3 w-3" />
+                        </Link>
+                      </Button>
+                      <DeleteLocationButton kind="arena" id={arena.id} name={arena.name} size="sm" />
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {arena.building ? `Inside ${arena.building.name}` : "Standalone"}
+                    {arena.surface ? ` · ${arena.surface}` : ""}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {capacity.buildings.length === 0 &&
+        capacity.pastures.length === 0 &&
+        capacity.arenas.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            No locations yet. Add a building, pasture, or arena to organize your animals.
+          </div>
+        )}
     </div>
   );
 }

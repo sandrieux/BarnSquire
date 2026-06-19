@@ -8,6 +8,8 @@ import {
   updateStallSchema,
   createPastureSchema,
   updatePastureSchema,
+  createArenaSchema,
+  updateArenaSchema,
 } from "@barnsquire/validators";
 
 async function assertBarnAccess(
@@ -173,12 +175,65 @@ export const locationRouter = router({
       return ctx.db.pasture.delete({ where: { id: input.id } });
     }),
 
+  // Arenas (exercise/work areas; may be inside a building or standalone)
+  listArenas: protectedProcedure
+    .input(z.object({ barnId: z.string().cuid() }))
+    .query(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "CARETAKER");
+      return ctx.db.arena.findMany({
+        where: { barnId: input.barnId },
+        include: { building: { select: { id: true, name: true } } },
+        orderBy: { name: "asc" },
+      });
+    }),
+
+  createArena: protectedProcedure
+    .input(createArenaSchema)
+    .mutation(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
+      if (input.buildingId) {
+        const building = await ctx.db.building.findUnique({ where: { id: input.buildingId } });
+        if (!building || building.barnId !== input.barnId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid building" });
+        }
+      }
+      return ctx.db.arena.create({ data: input });
+    }),
+
+  updateArena: protectedProcedure
+    .input(updateArenaSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const arena = await ctx.db.arena.findUnique({ where: { id } });
+      if (!arena) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertBarnAccess(ctx.db, ctx.session.user.id, arena.barnId);
+      return ctx.db.arena.update({ where: { id }, data });
+    }),
+
+  deleteArena: protectedProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const arena = await ctx.db.arena.findUnique({
+        where: { id: input.id },
+        include: { exercises: { where: { isActive: true } } },
+      });
+      if (!arena) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertBarnAccess(ctx.db, ctx.session.user.id, arena.barnId);
+      if (arena.exercises.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Arena is used by exercise schedules",
+        });
+      }
+      return ctx.db.arena.delete({ where: { id: input.id } });
+    }),
+
   // Capacity overview for a barn
   getCapacityStatus: protectedProcedure
     .input(z.object({ barnId: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "CARETAKER");
-      const [buildings, pastures] = await Promise.all([
+      const [buildings, pastures, arenas] = await Promise.all([
         ctx.db.building.findMany({
           where: { barnId: input.barnId },
           include: {
@@ -190,6 +245,10 @@ export const locationRouter = router({
         ctx.db.pasture.findMany({
           where: { barnId: input.barnId },
           include: { homeAnimals: { select: { id: true, name: true } } },
+        }),
+        ctx.db.arena.findMany({
+          where: { barnId: input.barnId },
+          include: { building: { select: { id: true, name: true } } },
         }),
       ]);
 
@@ -207,6 +266,7 @@ export const locationRouter = router({
           occupancy: p.homeAnimals.length,
           isFull: p.homeAnimals.length >= p.maxCapacity,
         })),
+        arenas,
       };
     }),
 });

@@ -94,7 +94,7 @@ export function StallForm({
 }: {
   barnId: string;
   buildingId?: string;
-  editing?: { id: string; name: string; type: "STANDARD" | "PANIC"; maxCapacity: number; notes: string | null };
+  editing?: { id: string; name: string; type: "STANDARD" | "QUARANTINE"; maxCapacity: number; notes: string | null };
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -113,7 +113,7 @@ export function StallForm({
         const form = new FormData(e.currentTarget);
         const base = {
           name: form.get("name") as string,
-          type: form.get("type") as "STANDARD" | "PANIC",
+          type: form.get("type") as "STANDARD" | "QUARANTINE",
           maxCapacity: Number(form.get("maxCapacity")),
           notes: (form.get("notes") as string) || undefined,
         };
@@ -129,7 +129,7 @@ export function StallForm({
         <Label htmlFor="type">Type</Label>
         <Select id="type" name="type" defaultValue={editing?.type ?? "STANDARD"}>
           <option value="STANDARD">Standard</option>
-          <option value="PANIC">Panic (quarantine/isolation)</option>
+          <option value="QUARANTINE">Quarantine (isolation)</option>
         </Select>
       </div>
       <div className="space-y-2">
@@ -210,6 +210,72 @@ export function PastureForm({
           defaultValue={editing?.acreage ?? ""}
           placeholder="5.0"
         />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea id="notes" name="notes" rows={2} defaultValue={editing?.notes ?? ""} />
+      </div>
+    </FormShell>
+  );
+}
+
+export function ArenaForm({
+  barnId,
+  buildings,
+  editing,
+}: {
+  barnId: string;
+  buildings: Array<{ id: string; name: string }>;
+  editing?: {
+    id: string;
+    name: string;
+    buildingId: string | null;
+    surface: string | null;
+    notes: string | null;
+  };
+}) {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const back = () => router.push(`/barns/${barnId}/locations`);
+  const create = trpc.location.createArena.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const update = trpc.location.updateArena.useMutation({ onSuccess: back, onError: (e) => setError(e.message) });
+  const isPending = create.isPending || update.isPending;
+
+  return (
+    <FormShell
+      title={editing ? "Edit arena" : "Add arena"}
+      pending={isPending}
+      error={error}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        const buildingId = (form.get("buildingId") as string) || undefined;
+        const base = {
+          name: form.get("name") as string,
+          buildingId,
+          surface: (form.get("surface") as string) || undefined,
+          notes: (form.get("notes") as string) || undefined,
+        };
+        if (editing) update.mutate({ id: editing.id, ...base });
+        else create.mutate({ barnId, ...base });
+      }}
+    >
+      <div className="space-y-2">
+        <Label htmlFor="name">Arena name *</Label>
+        <Input id="name" name="name" required defaultValue={editing?.name} placeholder="Indoor Arena" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="buildingId">Building (optional)</Label>
+        <Select id="buildingId" name="buildingId" defaultValue={editing?.buildingId ?? ""}>
+          <option value="">— Standalone (not in a building) —</option>
+          {buildings.map((b) => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="surface">Surface</Label>
+        <Input id="surface" name="surface" defaultValue={editing?.surface ?? ""} placeholder="Sand, Grass, Rubber…" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>

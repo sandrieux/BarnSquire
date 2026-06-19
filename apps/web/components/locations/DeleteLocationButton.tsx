@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type Kind = "building" | "stall" | "pasture";
+type Kind = "building" | "stall" | "pasture" | "arena";
 
 export function DeleteLocationButton({
   kind,
@@ -27,16 +27,21 @@ export function DeleteLocationButton({
   const deleteBuilding = trpc.location.deleteBuilding.useMutation({ onSuccess, onError });
   const deleteStall = trpc.location.deleteStall.useMutation({ onSuccess, onError });
   const deletePasture = trpc.location.deletePasture.useMutation({ onSuccess, onError });
+  const deleteArena = trpc.location.deleteArena.useMutation({ onSuccess, onError });
 
   const pending =
-    deleteBuilding.isPending || deleteStall.isPending || deletePasture.isPending;
+    deleteBuilding.isPending ||
+    deleteStall.isPending ||
+    deletePasture.isPending ||
+    deleteArena.isPending;
 
   function handleClick() {
     const noun = kind === "building" ? "building (and all its stalls)" : kind;
     if (!window.confirm(`Delete ${noun} "${name}"? This cannot be undone.`)) return;
     if (kind === "building") deleteBuilding.mutate({ id });
     else if (kind === "stall") deleteStall.mutate({ id });
-    else deletePasture.mutate({ id });
+    else if (kind === "pasture") deletePasture.mutate({ id });
+    else deleteArena.mutate({ id });
   }
 
   const iconCls = size === "sm" ? "h-3 w-3" : "h-4 w-4";
