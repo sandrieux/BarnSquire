@@ -28,6 +28,13 @@ export const updateMemberRoleSchema = z.object({
   role: z.enum(["BARN_MANAGER", "CARETAKER"]),
 });
 
+export const resetMemberPasswordSchema = z.object({
+  barnId: z.string().cuid(),
+  userId: z.string().cuid(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  requireChange: z.boolean().default(true),
+});
+
 export type CreateBarnInput = z.infer<typeof createBarnSchema>;
 export type UpdateBarnInput = z.infer<typeof updateBarnSchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;

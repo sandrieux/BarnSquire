@@ -8,7 +8,10 @@ import {
   addMemberSchema,
   createMemberSchema,
   updateMemberRoleSchema,
+  resetMemberPasswordSchema,
 } from "@barnsquire/validators";
+
+const ROLE_ORDER = { CARETAKER: 0, BARN_MANAGER: 1, GLOBAL_ADMIN: 2 } as const;
 
 async function assertBarnAccess(
   db: import("@barnsquire/db").PrismaClient,
@@ -135,12 +138,46 @@ export const barnRouter = router({
   removeMember: protectedProcedure
     .input(z.object({ barnId: z.string().cuid(), userId: z.string().cuid() }))
     .mutation(async ({ ctx, input }) => {
-      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      const actor = await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
       if (input.userId === ctx.session.user.id) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot remove yourself" });
+      }
+      const target = await ctx.db.barnMembership.findUnique({
+        where: { userId_barnId: { userId: input.userId, barnId: input.barnId } },
+      });
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Not a member of this barn" });
+      if (ROLE_ORDER[target.role] > ROLE_ORDER[actor.role]) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot remove a higher-privileged member" });
       }
       return ctx.db.barnMembership.delete({
         where: { userId_barnId: { userId: input.userId, barnId: input.barnId } },
       });
+    }),
+
+  // Barn manager / admin sets a member's password, optionally forcing them to
+  // change it at next sign-in.
+  resetMemberPassword: protectedProcedure
+    .input(resetMemberPasswordSchema)
+    .mutation(async ({ ctx, input }) => {
+      const actor = await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      if (input.userId === ctx.session.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Use Change Password for your own account",
+        });
+      }
+      const target = await ctx.db.barnMembership.findUnique({
+        where: { userId_barnId: { userId: input.userId, barnId: input.barnId } },
+      });
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Not a member of this barn" });
+      if (ROLE_ORDER[target.role] > ROLE_ORDER[actor.role]) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot reset a higher-privileged member" });
+      }
+      const passwordHash = await bcrypt.hash(input.newPassword, 12);
+      await ctx.db.user.update({
+        where: { id: input.userId },
+        data: { passwordHash, mustChangePassword: input.requireChange },
+      });
+      return { ok: true };
     }),
 });
