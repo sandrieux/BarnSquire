@@ -80,50 +80,58 @@ export function FeedingManager({ animalId }: { animalId: string }) {
           No feeding schedules yet.
         </div>
       ) : (
-        <div className="space-y-4">
-          {SLOTS.map((slot) => {
-            const slotSchedules = schedules.filter((s) => s.slot === slot);
-            if (slotSchedules.length === 0) return null;
-            return (
-              <div key={slot} className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  {SLOT_LABELS[slot]}
-                </h3>
-                {slotSchedules.map((schedule) => (
-                  <Card key={schedule.id}>
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div className={cn(
-                        "rounded-full p-2 shrink-0",
-                        schedule.isMedication ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
-                      )}>
-                        {schedule.isMedication ? <Pill className="h-4 w-4" /> : <Wheat className="h-4 w-4" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{schedule.feedType}</span>
-                          <span className="text-muted-foreground">
-                            {schedule.quantity}{schedule.unit ? ` ${schedule.unit}` : ""}
-                          </span>
-                          {schedule.slot === "CUSTOM" && schedule.customTime && (
-                            <Badge variant="outline">{schedule.customTime}</Badge>
-                          )}
-                          {schedule.isMedication && <Badge variant="warning">Medication</Badge>}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {schedule.repeatDays.length === 7
-                            ? "Daily"
-                            : schedule.repeatDays
-                                .map((d) => WEEKDAYS.find((w) => w.value === d)?.label)
-                                .join(", ")}
-                          {" · from "}{formatDate(schedule.startDate)}
-                          {schedule.endDate ? ` until ${formatDate(schedule.endDate)}` : ""}
-                        </div>
-                        {schedule.instructions && (
-                          <p className="text-xs text-muted-foreground mt-1">{schedule.instructions}</p>
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Slot</th>
+                <th className="px-3 py-2 font-medium">Item</th>
+                <th className="px-3 py-2 font-medium">Quantity</th>
+                <th className="px-3 py-2 font-medium">Schedule</th>
+                <th className="px-3 py-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...schedules]
+                .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot))
+                .map((schedule) => (
+                  <tr key={schedule.id} className="border-b last:border-0 align-top">
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {SLOT_LABELS[schedule.slot]}
+                      {schedule.slot === "CUSTOM" && schedule.customTime && (
+                        <span className="text-muted-foreground"> {schedule.customTime}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        {schedule.isMedication ? (
+                          <Pill className="h-4 w-4 text-orange-600 shrink-0" />
+                        ) : (
+                          <Wheat className="h-4 w-4 text-green-600 shrink-0" />
                         )}
+                        <span className="font-medium">{schedule.feedType}</span>
+                        {schedule.isMedication && <Badge variant="warning">Med</Badge>}
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(schedule)}>
+                      {schedule.instructions && (
+                        <p className="text-xs text-muted-foreground mt-1">{schedule.instructions}</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {schedule.quantity}{schedule.unit ? ` ${schedule.unit}` : ""}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {schedule.repeatDays.length === 7
+                        ? "Daily"
+                        : schedule.repeatDays
+                            .map((d) => WEEKDAYS.find((w) => w.value === d)?.label)
+                            .join(", ")}
+                      <br />
+                      from {formatDate(schedule.startDate)}
+                      {schedule.endDate ? ` until ${formatDate(schedule.endDate)}` : ""}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(schedule)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -136,12 +144,11 @@ export function FeedingManager({ animalId }: { animalId: string }) {
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            );
-          })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

@@ -6,8 +6,9 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Calendar, Edit } from "lucide-react";
+import { MapPin, Calendar, Edit, ChevronLeft } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { FeedingManager } from "@/components/feeding/FeedingManager";
 
 export default async function AnimalProfilePage({
   params,
@@ -19,9 +20,8 @@ export default async function AnimalProfilePage({
 
   const { barnId, animalId } = await params;
   const caller = await createServerCaller();
-  const [animal, feedings, appointments] = await Promise.all([
+  const [animal, appointments] = await Promise.all([
     caller.animal.get({ id: animalId }),
-    caller.feeding.list({ animalId }),
     caller.appointment.list({ barnId, animalId, upcoming: true }),
   ]);
 
@@ -31,6 +31,14 @@ export default async function AnimalProfilePage({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {/* Back to list */}
+      <Button variant="ghost" size="sm" asChild className="-ml-2">
+        <Link href={`/barns/${barnId}/animals`}>
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          All animals
+        </Link>
+      </Button>
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -116,40 +124,11 @@ export default async function AnimalProfilePage({
         </Card>
       </div>
 
-      {/* Feeding schedules */}
-      <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Feeding schedules</CardTitle>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/barns/${barnId}/animals/${animalId}/feeding`}>Manage</Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {feedings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No feeding schedules yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {feedings.map((f: typeof feedings[number]) => (
-                <li key={f.id} className="text-sm flex justify-between">
-                  <span>
-                    <Badge variant={f.isMedication ? "warning" : "success"} className="mr-2">
-                      {f.slot}
-                    </Badge>
-                    {f.feedType} — {f.quantity}{f.unit ? " " + f.unit : ""}
-                  </span>
-                  {!f.isActive && <Badge variant="outline">Ended</Badge>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {/* Feeding schedules — editable table */}
+      <FeedingManager animalId={animalId} />
 
       {/* Quick links */}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/barns/${barnId}/animals/${animalId}/feeding`}>Feeding</Link>
-        </Button>
         <Button variant="outline" size="sm" asChild>
           <Link href={`/barns/${barnId}/animals/${animalId}/appointments`}>Appointments</Link>
         </Button>

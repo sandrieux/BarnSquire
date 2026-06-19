@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { createServerCaller } from "@/lib/trpc/server";
@@ -37,11 +38,29 @@ export default async function AnimalsPage({ params }: { params: Promise<{ barnId
               <Card className="hover:border-primary transition-colors cursor-pointer">
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold">{animal.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {animal.breed ?? animal.species}
-                      </p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {animal.profilePhotoUrl ? (
+                        <div className="relative h-12 w-12 rounded-full overflow-hidden border shrink-0">
+                          <Image
+                            src={animal.profilePhotoUrl}
+                            alt={animal.name}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground shrink-0">
+                          {animal.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{animal.name}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {animal.breed ?? animal.species}
+                        </p>
+                      </div>
                     </div>
                     <Badge variant="secondary" className="shrink-0 text-xs">
                       {animal.size}
