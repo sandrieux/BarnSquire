@@ -8,8 +8,10 @@ import { turnoutRouter } from "./turnout";
 import { todayRouter } from "./today";
 import { mediaRouter } from "./media";
 import { adminRouter } from "./admin";
+import { userRouter } from "./user";
 
 export const appRouter = router({
+  user: userRouter,
   barn: barnRouter,
   location: locationRouter,
   animal: animalRouter,

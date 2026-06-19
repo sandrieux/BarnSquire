@@ -1,10 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { router, protectedProcedure, adminProcedure } from "../trpc";
 import {
   createBarnSchema,
   updateBarnSchema,
   addMemberSchema,
+  createMemberSchema,
   updateMemberRoleSchema,
 } from "@barnsquire/validators";
 
@@ -89,6 +91,31 @@ export const barnRouter = router({
         where: { userId_barnId: { userId: user.id, barnId: input.barnId } },
       });
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member" });
+      return ctx.db.barnMembership.create({
+        data: { userId: user.id, barnId: input.barnId, role: input.role },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+    }),
+
+  // Create a brand-new user account with a temporary password and add them to
+  // the barn. The user is forced to change the password on first sign-in.
+  createMember: protectedProcedure
+    .input(createMemberSchema)
+    .mutation(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      const existing = await ctx.db.user.findUnique({ where: { email: input.email } });
+      if (existing) {
+        throw new TRPCError({ code: "CONFLICT", message: "A user with that email already exists" });
+      }
+      const passwordHash = await bcrypt.hash(input.tempPassword, 12);
+      const user = await ctx.db.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          passwordHash,
+          mustChangePassword: true,
+        },
+      });
       return ctx.db.barnMembership.create({
         data: { userId: user.id, barnId: input.barnId, role: input.role },
         include: { user: { select: { id: true, name: true, email: true } } },

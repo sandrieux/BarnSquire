@@ -14,6 +14,14 @@ export const addMemberSchema = z.object({
   role: z.enum(["BARN_MANAGER", "CARETAKER"]),
 });
 
+export const createMemberSchema = z.object({
+  barnId: z.string().cuid(),
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  tempPassword: z.string().min(8, "Temporary password must be at least 8 characters"),
+  role: z.enum(["BARN_MANAGER", "CARETAKER"]),
+});
+
 export const updateMemberRoleSchema = z.object({
   barnId: z.string().cuid(),
   userId: z.string().cuid(),
@@ -23,3 +31,4 @@ export const updateMemberRoleSchema = z.object({
 export type CreateBarnInput = z.infer<typeof createBarnSchema>;
 export type UpdateBarnInput = z.infer<typeof updateBarnSchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
+export type CreateMemberInput = z.infer<typeof createMemberSchema>;
