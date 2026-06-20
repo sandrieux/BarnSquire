@@ -28,7 +28,7 @@ apps/web/                 Next.js app
   app/(auth)/             login, register
   app/(app)/              authenticated shell (sidebar, BarnSwitcher); force-dynamic
   app/api/trpc/[trpc]/    tRPC HTTP handler
-  components/             feature components (animals, feeding, appointments, turnout, locations, today)
+  components/             feature components (animals, feeding, appointments, turnout, exercise, locations, barn, today)
   lib/trpc/               client.tsx (provider), server.ts (createServerCaller), types.ts (RouterOutputs)
   lib/auth.ts             NextAuth config
 packages/db/              Prisma schema (prisma/schema.prisma), client singleton (src/index.ts), seed (src/seed.ts)
@@ -97,8 +97,9 @@ default `barnsquire`) via the MinIO console at http://localhost:9001
   `"HH:MM"` strings (no date) plus `repeatDays`. Conflicts match on overlapping
   time windows AND shared weekdays.
 - **Exercise** is a recurring time-of-day activity (like turnout): `startTime`
-  required + optional `endTime` (`"HH:MM"`), `repeatDays`, plus `type`/`trainer`/
-  free-text `location`. Managed inline on the animal page; surfaces on Today.
+  required + optional `endTime` (`"HH:MM"`), `repeatDays`, plus `type`/`trainer`
+  and a location reference to an arena or pasture (`locationArenaId`/
+  `locationPastureId`). Managed inline on the animal page; surfaces on Today.
 - **Today view** (`today.getDailyView`) expands feeding/medication/turnout/
   exercise from their repeat rules for the requested date on the fly (no
   pre-expanded table) and groups tasks by home location. Completion is an
