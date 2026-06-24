@@ -1,0 +1,30 @@
+# Dependencies — installed fresh inside the image (and arch-specific)
+node_modules
+**/node_modules
+
+# Build output
+.next
+**/.next
+dist
+**/dist
+
+# Local env & secrets — injected at runtime, never baked into the image
+.env
+.env.local
+**/.env.local
+
+# VCS & tooling
+.git
+.gitignore
+.turbo
+**/.turbo
+
+# Editor / OS cruft
+.vscode
+.idea
+.DS_Store
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose*.yml
