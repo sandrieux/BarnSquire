@@ -34,9 +34,12 @@ COPY --from=deps /app ./
 # install from deps survives intact.
 COPY . .
 
-# Build args are baked into the Next.js bundle at build time
+# Build args are baked into the Next.js bundle at build time. Promote to ENV so
+# next.config.ts can read STORAGE_PUBLIC_URL when computing image remotePatterns.
 ARG NEXTAUTH_URL
 ARG STORAGE_PUBLIC_URL
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV STORAGE_PUBLIC_URL=$STORAGE_PUBLIC_URL
 
 RUN pnpm build
 
