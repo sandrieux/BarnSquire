@@ -24,8 +24,14 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+# Bring the full installed workspace from deps — root AND per-package
+# node_modules (incl. the generated Prisma client). pnpm resolves each
+# workspace package's deps (e.g. @prisma/client from packages/db) through its
+# own node_modules, so copying only the root would leave those types as `any`.
+COPY --from=deps /app ./
+
+# Overlay source. node_modules is excluded via .dockerignore, so the symlinked
+# install from deps survives intact.
 COPY . .
 
 # Build args are baked into the Next.js bundle at build time
