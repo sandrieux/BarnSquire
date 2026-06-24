@@ -11,6 +11,9 @@ async function main() {
       email: "admin@barnsquire.com",
       name: "Admin User",
       passwordHash,
+      // Force a password change on first login so the well-known default
+      // ("password123") can't persist in a real deployment.
+      mustChangePassword: true,
     },
   });
 
