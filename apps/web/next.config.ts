@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   transpilePackages: ["@barnsquire/db", "@barnsquire/trpc", "@barnsquire/validators"],
   images: {
     remotePatterns: [
