@@ -16,11 +16,11 @@ async function main() {
 
   // Find an existing seeded barn by name (ids are auto-generated cuids so they
   // pass the routers' cuid validation), otherwise create one.
-  let barn = await db.barn.findFirst({ where: { name: "Maple Ridge Farm" } });
+  let barn = await db.barn.findFirst({ where: { name: "Horse Kingdom" } });
   if (!barn) {
     barn = await db.barn.create({
       data: {
-        name: "Maple Ridge Farm",
+        name: "Horse Kingdom",
         address: "123 Barn Lane, Countryside, USA",
         timezone: "America/New_York",
       },
