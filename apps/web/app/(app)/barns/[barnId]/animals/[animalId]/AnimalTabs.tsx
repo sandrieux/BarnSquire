@@ -44,7 +44,10 @@ export function AnimalTabs({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 border-b overflow-x-auto" role="tablist">
+      <div
+        className="flex gap-1 border-b overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+      >
         {TABS.map((tab) => (
           <button
             key={tab}
