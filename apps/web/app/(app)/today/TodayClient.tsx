@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn, formatDate } from "@/lib/utils";
+import { TaskDetailDialog } from "./TaskDetailDialog";
 
 type Group = RouterOutputs["today"]["getDailyView"][number];
 type Task = Group["tasks"][number];
@@ -42,6 +43,7 @@ export function TodayClient({
   const router = useRouter();
   const [slotFilter, setSlotFilter] = useState<"ALL" | "MORNING" | "LUNCH" | "EVENING">("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<{ task: Task; location: string } | null>(null);
 
   const utils = trpc.useUtils();
   const { data: groups = [] } = trpc.today.getDailyView.useQuery({ barnId, date });
@@ -221,10 +223,29 @@ export function TodayClient({
                             </svg>
                           )}
                         </button>
-                        <div className="flex-1 min-w-0">
+                        <button
+                          type="button"
+                          className="flex-1 min-w-0 text-left hover:underline cursor-pointer"
+                          title="View details"
+                          onClick={() =>
+                            setDetail({
+                              task,
+                              location:
+                                group.type === "unassigned"
+                                  ? "No location"
+                                  : [
+                                      group.type === "stall" ? "Stall" : "Pasture",
+                                      group.buildingName,
+                                      group.name,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · "),
+                            })
+                          }
+                        >
                           <span className={cn(isDone && "line-through")}>{task.label}</span>
                           <span className="text-muted-foreground ml-2">{task.detail}</span>
-                        </div>
+                        </button>
                         <Badge variant={TASK_BADGE_VARIANT[task.taskType]} className="shrink-0 text-xs">
                           {isSkipped ? "Skipped" : task.taskType.charAt(0) + task.taskType.slice(1).toLowerCase()}
                         </Badge>
@@ -236,6 +257,14 @@ export function TodayClient({
             </CardContent>
           </Card>
         ))
+      )}
+
+      {detail && (
+        <TaskDetailDialog
+          task={detail.task}
+          location={detail.location}
+          onClose={() => setDetail(null)}
+        />
       )}
     </div>
   );
