@@ -266,7 +266,20 @@ export const locationRouter = router({
           occupancy: p.homeAnimals.length,
           isFull: p.homeAnimals.length >= p.maxCapacity,
         })),
-        arenas,
+        // Map to an explicit literal (like buildings/pastures above) so the
+        // return type is a concrete shape rather than a deep Prisma payload
+        // generic — the latter can collapse to `any` in a clean type-check.
+        arenas: arenas.map((a) => ({
+          id: a.id,
+          barnId: a.barnId,
+          buildingId: a.buildingId,
+          name: a.name,
+          surface: a.surface,
+          notes: a.notes,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+          building: a.building,
+        })),
       };
     }),
 });
