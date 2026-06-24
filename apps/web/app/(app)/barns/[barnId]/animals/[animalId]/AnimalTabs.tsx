@@ -6,6 +6,7 @@ import { FeedingManager } from "@/components/feeding/FeedingManager";
 import { AppointmentManager } from "@/components/appointments/AppointmentManager";
 import { TurnoutManager } from "@/components/turnout/TurnoutManager";
 import { ExerciseManager } from "@/components/exercise/ExerciseManager";
+import { LedgerManager } from "@/components/ledger/LedgerManager";
 import { cn } from "@/lib/utils";
 
 // Minimal structural type matching what the server page passes (avoids the
@@ -16,7 +17,7 @@ type Capacity = {
   arenas: Array<{ id: string; name: string }>;
 };
 
-const TABS = ["Feeding", "Appointments", "Turnout", "Exercise"] as const;
+const TABS = ["Feeding", "Appointments", "Turnout", "Exercise", "Ledger"] as const;
 type Tab = (typeof TABS)[number];
 
 export function AnimalTabs({
@@ -76,6 +77,7 @@ export function AnimalTabs({
             locations={{ pastures: capacity.pastures, arenas: capacity.arenas }}
           />
         )}
+        {active === "Ledger" && <LedgerManager animalId={animalId} />}
       </div>
     </div>
   );
