@@ -10,6 +10,9 @@ const loginSchema = z.object({
 });
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Required for self-hosted deployments (non-Vercel): trust the host header
+  // so Auth.js accepts requests served from a custom domain behind a proxy.
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {

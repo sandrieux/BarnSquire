@@ -25,6 +25,7 @@ model User {
   barnMemberships BarnMembership[]
   auditLogs       AuditLog[]
   taskCompletions TaskCompletion[]
+  ledgerEntries   LedgerEntry[]
 }
 
 model Account {
@@ -193,6 +194,7 @@ model Animal {
   turnoutEvents   TurnoutEvent[]
   exerciseSchedules ExerciseSchedule[]
   taskCompletions TaskCompletion[]
+  ledgerEntries   LedgerEntry[]
 }
 
 model MediaFile {
@@ -206,6 +208,47 @@ model MediaFile {
   createdAt  DateTime @default(now())
 
   animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+}
+
+// ─── Care Ledger ──────────────────────────────────────────────────────────────
+
+enum LedgerCategory {
+  FEEDING
+  MEDICATION
+  ACTIVITY
+  OTHER
+}
+
+// Manual, dated ledger entries authored by users. The Today completion history
+// (TaskCompletion) is merged with these at read time to form the full ledger.
+model LedgerEntry {
+  id              String         @id @default(cuid())
+  animalId        String
+  category        LedgerCategory
+  title           String
+  notes           String?
+  occurredAt      DateTime       @db.Date
+  createdByUserId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  animal      Animal             @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  createdBy   User?              @relation(fields: [createdByUserId], references: [id])
+  attachments LedgerAttachment[]
+
+  @@index([animalId, occurredAt])
+}
+
+model LedgerAttachment {
+  id            String   @id @default(cuid())
+  ledgerEntryId String
+  storageKey    String
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  createdAt     DateTime @default(now())
+
+  ledgerEntry LedgerEntry @relation(fields: [ledgerEntryId], references: [id], onDelete: Cascade)
 }
 
 // ─── Feeding Schedules ────────────────────────────────────────────────────────

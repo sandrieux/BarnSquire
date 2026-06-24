@@ -6,12 +6,9 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Calendar, Edit, ChevronLeft } from "lucide-react";
+import { MapPin, Calendar, Edit, ChevronLeft, ImageIcon } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { FeedingManager } from "@/components/feeding/FeedingManager";
-import { AppointmentManager } from "@/components/appointments/AppointmentManager";
-import { TurnoutManager } from "@/components/turnout/TurnoutManager";
-import { ExerciseManager } from "@/components/exercise/ExerciseManager";
+import { AnimalTabs } from "./AnimalTabs";
 
 export default async function AnimalProfilePage({
   params,
@@ -70,12 +67,20 @@ export default async function AnimalProfilePage({
             </div>
           </div>
         </div>
-        <Button variant="outline" asChild size="sm">
-          <Link href={`/barns/${barnId}/animals/${animalId}/edit`}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" asChild size="sm">
+            <Link href={`/barns/${barnId}/animals/${animalId}/photos`}>
+              <ImageIcon className="h-4 w-4 mr-2" />
+              Photos
+            </Link>
+          </Button>
+          <Button variant="outline" asChild size="sm">
+            <Link href={`/barns/${barnId}/animals/${animalId}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Details */}
@@ -101,27 +106,8 @@ export default async function AnimalProfilePage({
         </CardContent>
       </Card>
 
-      {/* Feeding schedules — editable table */}
-      <FeedingManager animalId={animalId} />
-
-      {/* Appointments — editable table */}
-      <AppointmentManager barnId={barnId} animalId={animalId} />
-
-      {/* Turnout — editable table */}
-      <TurnoutManager animalId={animalId} capacity={capacity} />
-
-      {/* Exercise — editable table */}
-      <ExerciseManager
-        animalId={animalId}
-        locations={{ pastures: capacity.pastures, arenas: capacity.arenas }}
-      />
-
-      {/* Photos */}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/barns/${barnId}/animals/${animalId}/photos`}>Photos</Link>
-        </Button>
-      </div>
+      {/* Schedules — tabbed */}
+      <AnimalTabs barnId={barnId} animalId={animalId} capacity={capacity} />
     </div>
   );
 }

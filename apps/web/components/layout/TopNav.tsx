@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { LogOut, User } from "lucide-react";
+import { KeyRound, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BarnSwitcher } from "./BarnSwitcher";
 
@@ -21,6 +22,11 @@ export function TopNav({ userName, barns, currentBarnId }: TopNavProps) {
         <User className="h-4 w-4" />
         <span className="hidden sm:inline">{userName}</span>
       </div>
+      <Button variant="ghost" size="icon" asChild title="Change password">
+        <Link href="/change-password">
+          <KeyRound className="h-4 w-4" />
+        </Link>
+      </Button>
       <Button
         variant="ghost"
         size="icon"
