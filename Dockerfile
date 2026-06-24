@@ -12,6 +12,10 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/trpc/package.json ./packages/trpc/
 COPY packages/validators/package.json ./packages/validators/
 
+# Prisma schema must be present so the db package's postinstall
+# (prisma generate) can run during install.
+COPY packages/db/prisma ./packages/db/prisma
+
 RUN pnpm install --frozen-lockfile
 
 # ── builder ─────────────────────────────────────────────────────────────────
