@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FeedingManager } from "@/components/feeding/FeedingManager";
 import { AppointmentManager } from "@/components/appointments/AppointmentManager";
 import { TurnoutManager } from "@/components/turnout/TurnoutManager";
@@ -27,7 +28,19 @@ export function AnimalTabs({
   animalId: string;
   capacity: Capacity;
 }) {
-  const [active, setActive] = useState<Tab>("Feeding");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const tabFromUrl = TABS.find((t) => t.toLowerCase() === searchParams.get("tab"));
+  const [active, setActive] = useState<Tab>(tabFromUrl ?? "Feeding");
+
+  function selectTab(tab: Tab) {
+    setActive(tab);
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", tab.toLowerCase());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   return (
     <div className="space-y-4">
@@ -37,7 +50,7 @@ export function AnimalTabs({
             key={tab}
             role="tab"
             aria-selected={active === tab}
-            onClick={() => setActive(tab)}
+            onClick={() => selectTab(tab)}
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors",
               active === tab
