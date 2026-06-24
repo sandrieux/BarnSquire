@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - /data/postgres:/var/lib/postgresql/data
     # not exposed to host — app connects over the internal network
 
   minio:
@@ -23,7 +23,7 @@ services:
       - "9000:9000"   # S3 API (needed by Next.js for presigned URLs)
       - "9001:9001"   # MinIO console — restrict at firewall for intranet
     volumes:
-      - minio_data:/data
+      - /data/minio:/data
 
   app:
     build:
@@ -48,7 +48,3 @@ services:
     depends_on:
       - postgres
       - minio
-
-volumes:
-  postgres_data:
-  minio_data:
