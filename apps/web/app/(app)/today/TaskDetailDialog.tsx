@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { X } from "lucide-react";
+import Link from "next/link";
+import { X, ArrowRight } from "lucide-react";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -23,10 +24,12 @@ function titleCase(s: string) {
 export function TaskDetailDialog({
   task,
   location,
+  barnId,
   onClose,
 }: {
   task: Task;
   location: string;
+  barnId: string;
   onClose: () => void;
 }) {
   // Close on Escape.
@@ -88,6 +91,16 @@ export function TaskDetailDialog({
           />
           {task.completion?.notes && <Row label="Notes" value={task.completion.notes} />}
         </dl>
+
+        <div className="border-t p-4">
+          <Link
+            href={`/barns/${barnId}/animals/${task.animalId}`}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            View {task.animalName}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     </div>
   );

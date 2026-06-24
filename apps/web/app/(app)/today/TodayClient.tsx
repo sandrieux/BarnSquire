@@ -263,6 +263,7 @@ export function TodayClient({
         <TaskDetailDialog
           task={detail.task}
           location={detail.location}
+          barnId={barnId}
           onClose={() => setDetail(null)}
         />
       )}
