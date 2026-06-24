@@ -8,6 +8,7 @@ import { turnoutRouter } from "./turnout";
 import { exerciseRouter } from "./exercise";
 import { todayRouter } from "./today";
 import { mediaRouter } from "./media";
+import { ledgerRouter } from "./ledger";
 import { adminRouter } from "./admin";
 import { userRouter } from "./user";
 
@@ -22,6 +23,7 @@ export const appRouter = router({
   exercise: exerciseRouter,
   today: todayRouter,
   media: mediaRouter,
+  ledger: ledgerRouter,
   admin: adminRouter,
 });
 
