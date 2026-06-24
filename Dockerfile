@@ -53,8 +53,10 @@ COPY --from=builder --chown=barnsquire:barnsquire /app/apps/web/.next/standalone
 COPY --from=builder --chown=barnsquire:barnsquire /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=barnsquire:barnsquire /app/apps/web/public ./apps/web/public
 
-# Prisma engine + schema (needed for db:push / db:seed at runtime)
+# Prisma engine + schema + seed source (needed for db push / seed at runtime)
 COPY --from=builder --chown=barnsquire:barnsquire /app/packages/db/prisma ./packages/db/prisma
+COPY --from=builder --chown=barnsquire:barnsquire /app/packages/db/src ./packages/db/src
+COPY --from=builder --chown=barnsquire:barnsquire /app/packages/db/package.json ./packages/db/package.json
 COPY --from=builder --chown=barnsquire:barnsquire /app/node_modules/.pnpm ./node_modules/.pnpm
 COPY --from=builder --chown=barnsquire:barnsquire /app/packages/db/node_modules ./packages/db/node_modules
 
