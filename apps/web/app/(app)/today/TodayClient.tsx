@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Bell } from "lucide-react";
+import { ChevronLeft, ChevronRight, Bell, Package } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,8 @@ export function TodayClient({
   const snoozeReminder = trpc.appointment.snoozeReminder.useMutation({
     onSuccess: () => utils.appointment.getDueReminders.invalidate(),
   });
+
+  const { data: refillsDue = [] } = trpc.feedStock.getRefillsDue.useQuery({ barnId });
 
   function navigateDate(delta: number) {
     const d = new Date(date);
@@ -147,6 +150,31 @@ export function TodayClient({
                   onClick={() => snoozeReminder.mutate({ id: r.id })}
                 >
                   Snooze
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Feed refill reminders */}
+      {refillsDue.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
+              <Package className="h-4 w-4" />
+              {refillsDue.length} feed{refillsDue.length > 1 ? "s" : ""} running low
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {refillsDue.map((r) => (
+              <div key={r.feedType} className="flex items-center justify-between text-sm">
+                <span>
+                  <span className="font-medium">{r.feedType}</span>
+                  <span className="text-muted-foreground"> — ~{Math.round(r.daysLeft)}d of feed left</span>
+                </span>
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                  <Link href={`/barns/${barnId}/stock`}>Add stock</Link>
                 </Button>
               </div>
             ))}
