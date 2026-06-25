@@ -39,7 +39,28 @@
       "TURNOUT": "Sortie au pré",
       "EXERCISE": "Exercice",
       "SCHEDULED_EVENT": "Événement planifié"
+    },
+    "detail": {
+      "task": "Tâche",
+      "details": "Détails",
+      "location": "Emplacement",
+      "status": "Statut",
+      "notes": "Notes",
+      "completed": "Complété {datetime}",
+      "skipped": "Ignoré",
+      "notDone": "Pas encore fait",
+      "view": "Voir {name}",
+      "close": "Fermer"
     }
+  },
+  "settings": {
+    "title": "Paramètres de l'écurie",
+    "details": "Détails",
+    "name": "Nom",
+    "address": "Adresse",
+    "timezone": "Fuseau horaire",
+    "teamMembers": "Membres de l'équipe",
+    "inviteMember": "Inviter un membre"
   },
   "auth": {
     "signIn": "Se connecter",
@@ -60,6 +81,8 @@
     "setPassword": "Définir le mot de passe",
     "saving": "Enregistrement…",
     "passwordTooShort": "Le mot de passe doit comporter au moins 8 caractères",
-    "passwordUpdated": "Mot de passe mis à jour. Redirection vers la connexion…"
+    "passwordUpdated": "Mot de passe mis à jour. Redirection vers la connexion…",
+    "setNewPasswordTitle": "Définir un nouveau mot de passe",
+    "setNewPasswordDesc": "Choisissez un nouveau mot de passe pour terminer la configuration de votre compte."
   }
 }
