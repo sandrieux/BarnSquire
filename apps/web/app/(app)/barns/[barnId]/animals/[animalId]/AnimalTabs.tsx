@@ -68,7 +68,7 @@ export function AnimalTabs({
       </div>
 
       <div>
-        {active === "Feeding" && <FeedingManager animalId={animalId} />}
+        {active === "Feeding" && <FeedingManager animalId={animalId} barnId={barnId} />}
         {active === "Appointments" && <AppointmentManager barnId={barnId} animalId={animalId} />}
         {active === "Turnout" && <TurnoutManager animalId={animalId} capacity={capacity} />}
         {active === "Exercise" && (

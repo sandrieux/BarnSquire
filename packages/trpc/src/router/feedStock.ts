@@ -80,8 +80,9 @@ async function computeStock(db: Db, barnId: string): Promise<StockRow[]> {
   const rows: StockRow[] = [];
   for (const feedType of feedTypes) {
     const rate = rates.get(feedType)?.ratePerDay ?? 0;
-    const unit = rates.get(feedType)?.unit ?? null;
     const stock = stockByType.get(feedType);
+    // The stock record's unit is canonical; fall back to whatever a schedule uses.
+    const unit = stock?.unit ?? rates.get(feedType)?.unit ?? null;
 
     let servingsRemaining = 0;
     if (stock) {
@@ -130,6 +131,7 @@ export const feedStockRouter = router({
         feedType: z.string().min(1).max(100),
         containers: z.number().positive(),
         servingsPerContainer: z.number().positive(),
+        unit: z.string().max(30).optional(),
         date: z.coerce.date().optional(),
       })
     )
@@ -154,6 +156,7 @@ export const feedStockRouter = router({
         create: {
           barnId: input.barnId,
           feedType: input.feedType,
+          unit: input.unit,
           servingsRemaining: added,
           asOfDate,
           servingsPerContainer: input.servingsPerContainer,
@@ -162,29 +165,56 @@ export const feedStockRouter = router({
           servingsRemaining: currentRemaining + added,
           asOfDate,
           servingsPerContainer: input.servingsPerContainer,
+          ...(input.unit !== undefined ? { unit: input.unit } : {}),
         },
       });
     }),
 
-  setThreshold: protectedProcedure
+  // Create a feed type in stock (possibly not yet used by any schedule) or edit
+  // its canonical unit / refill threshold.
+  upsertFeedType: protectedProcedure
     .input(
       z.object({
         barnId: z.string().cuid(),
         feedType: z.string().min(1).max(100),
-        thresholdDays: z.number().int().min(0).max(365),
+        unit: z.string().max(30).optional(),
+        thresholdDays: z.number().int().min(0).max(365).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
-      return ctx.db.feedStock.upsert({
+
+      const row = await ctx.db.feedStock.upsert({
         where: { barnId_feedType: { barnId: input.barnId, feedType: input.feedType } },
         create: {
           barnId: input.barnId,
           feedType: input.feedType,
-          thresholdDays: input.thresholdDays,
+          unit: input.unit,
+          thresholdDays: input.thresholdDays ?? 3,
           servingsRemaining: 0,
         },
-        update: { thresholdDays: input.thresholdDays },
+        update: {
+          ...(input.unit !== undefined ? { unit: input.unit } : {}),
+          ...(input.thresholdDays !== undefined ? { thresholdDays: input.thresholdDays } : {}),
+        },
       });
+
+      // Keep existing feed schedules' unit aligned with the canonical unit.
+      // (updateMany can't filter by relation, so resolve the barn's animals first.)
+      if (input.unit !== undefined) {
+        const animals = await ctx.db.animal.findMany({
+          where: { barnId: input.barnId },
+          select: { id: true },
+        });
+        await ctx.db.feedingSchedule.updateMany({
+          where: {
+            animalId: { in: animals.map((a) => a.id) },
+            feedType: input.feedType,
+            isMedication: false,
+          },
+          data: { unit: input.unit },
+        });
+      }
+      return row;
     }),
 });

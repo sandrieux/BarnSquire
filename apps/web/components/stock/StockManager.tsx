@@ -20,6 +20,7 @@ function round(n: number, dp = 0) {
 
 export function StockManager({ barnId }: { barnId: string }) {
   const [restockFor, setRestockFor] = useState<string | null>(null);
+  const [showAddType, setShowAddType] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: rows = [], isLoading } = trpc.feedStock.list.useQuery({ barnId });
@@ -28,61 +29,94 @@ export function StockManager({ barnId }: { barnId: string }) {
     utils.feedStock.list.invalidate({ barnId });
     utils.feedStock.getRefillsDue.invalidate({ barnId });
   };
-  const setThreshold = trpc.feedStock.setThreshold.useMutation({ onSuccess: invalidate });
+  const upsertFeedType = trpc.feedStock.upsertFeedType.useMutation({ onSuccess: invalidate });
 
   function commitThreshold(row: StockRow, raw: string) {
     const next = parseInt(raw, 10);
     if (!Number.isFinite(next) || next < 0 || next === row.thresholdDays) return;
-    setThreshold.mutate({ barnId, feedType: row.feedType, thresholdDays: next });
+    upsertFeedType.mutate({ barnId, feedType: row.feedType, thresholdDays: next });
   }
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-
-  if (rows.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-        No feed types yet. Add feeding schedules to your animals, then track their stock here.
-      </div>
-    );
+  function commitUnit(row: StockRow, raw: string) {
+    const next = raw.trim();
+    if (next === (row.unit ?? "")) return;
+    upsertFeedType.mutate({ barnId, feedType: row.feedType, unit: next });
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
-            <th className="px-3 py-2 font-medium">Feed</th>
-            <th className="px-3 py-2 font-medium">Days left</th>
-            <th className="px-3 py-2 font-medium">On hand</th>
-            <th className="px-3 py-2 font-medium">Use / day</th>
-            <th className="px-3 py-2 font-medium">Refill at</th>
-            <th className="px-3 py-2 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const unit = row.unit ? ` ${row.unit}` : "";
-            return (
-              <FragmentRow
-                key={row.feedType}
-                row={row}
-                unit={unit}
-                isAdding={restockFor === row.feedType}
-                onToggleAdd={() => setRestockFor((f) => (f === row.feedType ? null : row.feedType))}
-                onThresholdBlur={(raw) => commitThreshold(row, raw)}
-                onRestocked={() => {
-                  invalidate();
-                  setRestockFor(null);
-                }}
-                barnId={barnId}
-                roundedDaysLeft={row.daysLeft === null ? null : round(row.daysLeft)}
-              />
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Feed types</h2>
+        {!showAddType && (
+          <Button size="sm" onClick={() => setShowAddType(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add feed type
+          </Button>
+        )}
+      </div>
+
+      {showAddType && (
+        <AddFeedTypeForm
+          barnId={barnId}
+          existingUnits={uniqueUnits(rows)}
+          onDone={() => {
+            invalidate();
+            setShowAddType(false);
+          }}
+        />
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : rows.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+          No feed types yet. Add one above, or add feeding schedules to your animals.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Feed</th>
+                <th className="px-3 py-2 font-medium">Unit</th>
+                <th className="px-3 py-2 font-medium">Days left</th>
+                <th className="px-3 py-2 font-medium">On hand</th>
+                <th className="px-3 py-2 font-medium">Use / day</th>
+                <th className="px-3 py-2 font-medium">Refill at</th>
+                <th className="px-3 py-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const unit = row.unit ? ` ${row.unit}` : "";
+                return (
+                  <FragmentRow
+                    key={row.feedType}
+                    row={row}
+                    unit={unit}
+                    isAdding={restockFor === row.feedType}
+                    onToggleAdd={() => setRestockFor((f) => (f === row.feedType ? null : row.feedType))}
+                    onThresholdBlur={(raw) => commitThreshold(row, raw)}
+                    onUnitBlur={(raw) => commitUnit(row, raw)}
+                    onRestocked={() => {
+                      invalidate();
+                      setRestockFor(null);
+                    }}
+                    barnId={barnId}
+                    roundedDaysLeft={row.daysLeft === null ? null : round(row.daysLeft)}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
+}
+
+function uniqueUnits(rows: StockRow[]): string[] {
+  return [...new Set(rows.map((r) => r.unit).filter((u): u is string => !!u))].sort();
 }
 
 function FragmentRow({
@@ -91,6 +125,7 @@ function FragmentRow({
   isAdding,
   onToggleAdd,
   onThresholdBlur,
+  onUnitBlur,
   onRestocked,
   barnId,
   roundedDaysLeft,
@@ -100,6 +135,7 @@ function FragmentRow({
   isAdding: boolean;
   onToggleAdd: () => void;
   onThresholdBlur: (raw: string) => void;
+  onUnitBlur: (raw: string) => void;
   onRestocked: () => void;
   barnId: string;
   roundedDaysLeft: number | null;
@@ -108,6 +144,15 @@ function FragmentRow({
     <>
       <tr className="border-b last:border-0 align-top">
         <td className="px-3 py-2 font-medium">{row.feedType}</td>
+        <td className="px-3 py-2">
+          <Input
+            defaultValue={row.unit ?? ""}
+            onBlur={(e) => onUnitBlur(e.target.value)}
+            className="h-8 w-24"
+            placeholder="unit"
+            aria-label={`Serving unit for ${row.feedType}`}
+          />
+        </td>
         <td className="px-3 py-2 whitespace-nowrap">
           {roundedDaysLeft === null ? (
             <span className="text-muted-foreground">—</span>
@@ -149,7 +194,7 @@ function FragmentRow({
       </tr>
       {isAdding && (
         <tr className="border-b last:border-0 bg-muted/30">
-          <td colSpan={6} className="px-3 py-3">
+          <td colSpan={7} className="px-3 py-3">
             <RestockForm
               barnId={barnId}
               feedType={row.feedType}
@@ -231,10 +276,83 @@ function RestockForm({
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
           <Button type="submit" size="sm" disabled={restock.isPending}>
             {restock.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
             {restock.isPending ? "Saving…" : "Add to stock"}
           </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AddFeedTypeForm({
+  barnId,
+  existingUnits,
+  onDone,
+}: {
+  barnId: string;
+  existingUnits: string[];
+  onDone: () => void;
+}) {
+  const [error, setError] = useState("");
+  const upsert = trpc.feedStock.upsertFeedType.useMutation({
+    onSuccess: onDone,
+    onError: (e) => setError(e.message),
+  });
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    const form = new FormData(e.currentTarget);
+    const feedType = (form.get("feedType") as string)?.trim();
+    const unit = (form.get("unit") as string)?.trim();
+    const thresholdDays = parseInt(form.get("thresholdDays") as string, 10);
+    if (!feedType) return setError("Feed name is required");
+    upsert.mutate({
+      barnId,
+      feedType,
+      unit: unit || undefined,
+      thresholdDays: Number.isFinite(thresholdDays) ? thresholdDays : 3,
+    });
+  }
+
+  return (
+    <Card className="border-primary">
+      <CardContent className="p-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label htmlFor="newFeedType">Feed name</Label>
+              <Input id="newFeedType" name="feedType" required placeholder="Orchard Grass Hay" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="newUnit">Serving unit</Label>
+              <Input id="newUnit" name="unit" placeholder="flakes" list="stock-units" />
+              <datalist id="stock-units">
+                {existingUnits.map((u) => (
+                  <option key={u} value={u} />
+                ))}
+              </datalist>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="newThreshold">Refill at (days)</Label>
+              <Input id="newThreshold" name="thresholdDays" type="number" min="0" defaultValue="3" />
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={upsert.isPending}>
+              {upsert.isPending ? "Saving…" : "Add feed type"}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+              Cancel
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
