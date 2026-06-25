@@ -290,6 +290,7 @@ model FeedStock {
   id                   String   @id @default(cuid())
   barnId               String
   feedType             String
+  unit                 String?
   servingsRemaining    Float    @default(0)
   asOfDate             DateTime @default(now())
   thresholdDays        Int      @default(3)
