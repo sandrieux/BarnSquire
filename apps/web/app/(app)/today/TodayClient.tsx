@@ -21,6 +21,7 @@ const TASK_COLORS: Record<string, string> = {
   APPOINTMENT: "bg-blue-50 border-blue-200",
   TURNOUT: "bg-purple-50 border-purple-200",
   EXERCISE: "bg-amber-50 border-amber-200",
+  SCHEDULED_EVENT: "bg-slate-50 border-slate-200",
 };
 
 const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "success"> = {
@@ -29,7 +30,11 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
   APPOINTMENT: "default",
   TURNOUT: "secondary",
   EXERCISE: "default",
+  SCHEDULED_EVENT: "secondary",
 };
+
+const SLOTS = ["ALL", "MORNING", "LUNCH", "AFTERNOON", "EVENING"] as const;
+type SlotFilter = (typeof SLOTS)[number];
 
 export function TodayClient({
   barnId,
@@ -41,7 +46,7 @@ export function TodayClient({
   date: string;
 }) {
   const router = useRouter();
-  const [slotFilter, setSlotFilter] = useState<"ALL" | "MORNING" | "LUNCH" | "EVENING">("ALL");
+  const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<{ task: Task; location: string } | null>(null);
 
@@ -49,8 +54,8 @@ export function TodayClient({
   const { data: groups = [] } = trpc.today.getDailyView.useQuery({ barnId, date });
 
   const completeTask = trpc.today.completeTask.useMutation({
-    onMutate: ({ feedingScheduleId, appointmentId, turnoutEventId, exerciseScheduleId }) => {
-      const key = feedingScheduleId ?? appointmentId ?? turnoutEventId ?? exerciseScheduleId ?? "";
+    onMutate: ({ feedingScheduleId, appointmentId, turnoutEventId, exerciseScheduleId, scheduledEventId }) => {
+      const key = feedingScheduleId ?? appointmentId ?? turnoutEventId ?? exerciseScheduleId ?? scheduledEventId ?? "";
       setOptimisticDone((prev) => new Set([...prev, key]));
     },
     onSuccess: () => utils.today.getDailyView.invalidate(),
@@ -72,11 +77,12 @@ export function TodayClient({
       barnId,
       date,
       taskType: task.taskType,
-      animalId: task.animalId,
+      animalId: task.animalId || undefined,
       feedingScheduleId: task.taskType === "FEEDING" || task.taskType === "MEDICATION" ? task.id : undefined,
       appointmentId: task.taskType === "APPOINTMENT" ? task.id : undefined,
       turnoutEventId: task.taskType === "TURNOUT" ? task.id : undefined,
       exerciseScheduleId: task.taskType === "EXERCISE" ? task.id : undefined,
+      scheduledEventId: task.taskType === "SCHEDULED_EVENT" ? task.id : undefined,
     });
   }
 
@@ -86,7 +92,7 @@ export function TodayClient({
     ...group,
     tasks: slotFilter === "ALL"
       ? group.tasks
-      : group.tasks.filter((t) => t.label.toUpperCase().startsWith(slotFilter)),
+      : group.tasks.filter((t) => t.slot === slotFilter),
   })).filter((g) => g.tasks.length > 0);
 
   const totalTasks = groups.flatMap((g) => g.tasks).length;
@@ -150,7 +156,7 @@ export function TodayClient({
 
       {/* Slot filter */}
       <div className="flex gap-2 flex-wrap">
-        {(["ALL", "MORNING", "LUNCH", "EVENING"] as const).map((slot) => (
+        {SLOTS.map((slot) => (
           <Button
             key={slot}
             variant={slotFilter === slot ? "default" : "outline"}
@@ -173,7 +179,13 @@ export function TodayClient({
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <span className="text-xs text-muted-foreground font-normal uppercase tracking-wider">
-                  {group.type === "stall" ? "Stall" : group.type === "pasture" ? "Pasture" : "No location"}
+                  {group.type === "stall"
+                    ? "Stall"
+                    : group.type === "pasture"
+                    ? "Pasture"
+                    : group.type === "barn"
+                    ? "Barn"
+                    : "No location"}
                 </span>
                 {group.buildingName && (
                   <>
@@ -181,7 +193,7 @@ export function TodayClient({
                     <span className="text-xs text-muted-foreground font-normal">{group.buildingName}</span>
                   </>
                 )}
-                <span className="font-semibold">{group.name}</span>
+                {group.type !== "barn" && <span className="font-semibold">{group.name}</span>}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -194,7 +206,7 @@ export function TodayClient({
                 }, new Map<string, Task[]>())
               ).map(([animalName, tasks]) => (
                 <div key={animalName} className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">{animalName}</p>
+                  {animalName && <p className="text-sm font-medium text-muted-foreground">{animalName}</p>}
                   {tasks.map((task) => {
                     const isDone = optimisticDone.has(task.id) || !!task.completion?.completedAt;
                     const isSkipped = task.completion?.skipped && !task.completion?.completedAt;
@@ -231,7 +243,9 @@ export function TodayClient({
                             setDetail({
                               task,
                               location:
-                                group.type === "unassigned"
+                                group.type === "barn"
+                                  ? "Barn"
+                                  : group.type === "unassigned"
                                   ? "No location"
                                   : [
                                       group.type === "stall" ? "Stall" : "Pasture",

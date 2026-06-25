@@ -15,10 +15,15 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
   APPOINTMENT: "default",
   TURNOUT: "secondary",
   EXERCISE: "default",
+  SCHEDULED_EVENT: "secondary",
 };
 
 function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
+  return s
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 export function TaskDetailDialog({
@@ -66,7 +71,7 @@ export function TaskDetailDialog({
         <div className="flex items-start justify-between border-b p-4">
           <div className="flex items-center gap-2">
             <Badge variant={TASK_BADGE_VARIANT[task.taskType]}>{titleCase(task.taskType)}</Badge>
-            <h2 className="font-semibold">{task.animalName}</h2>
+            <h2 className="font-semibold">{task.animalName || "Barn"}</h2>
           </div>
           <button
             onClick={onClose}
@@ -92,15 +97,17 @@ export function TaskDetailDialog({
           {task.completion?.notes && <Row label="Notes" value={task.completion.notes} />}
         </dl>
 
-        <div className="border-t p-4">
-          <Link
-            href={`/barns/${barnId}/animals/${task.animalId}`}
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            View {task.animalName}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+        {task.animalId && (
+          <div className="border-t p-4">
+            <Link
+              href={`/barns/${barnId}/animals/${task.animalId}`}
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              View {task.animalName}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
