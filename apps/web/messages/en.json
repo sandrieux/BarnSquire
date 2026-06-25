@@ -39,7 +39,28 @@
       "TURNOUT": "Turnout",
       "EXERCISE": "Exercise",
       "SCHEDULED_EVENT": "Scheduled event"
+    },
+    "detail": {
+      "task": "Task",
+      "details": "Details",
+      "location": "Location",
+      "status": "Status",
+      "notes": "Notes",
+      "completed": "Completed {datetime}",
+      "skipped": "Skipped",
+      "notDone": "Not done yet",
+      "view": "View {name}",
+      "close": "Close"
     }
+  },
+  "settings": {
+    "title": "Barn settings",
+    "details": "Details",
+    "name": "Name",
+    "address": "Address",
+    "timezone": "Timezone",
+    "teamMembers": "Team members",
+    "inviteMember": "Invite member"
   },
   "auth": {
     "signIn": "Sign in",
@@ -60,6 +81,8 @@
     "setPassword": "Set password",
     "saving": "Saving…",
     "passwordTooShort": "Password must be at least 8 characters",
-    "passwordUpdated": "Password updated. Redirecting you to sign in…"
+    "passwordUpdated": "Password updated. Redirecting you to sign in…",
+    "setNewPasswordTitle": "Set a new password",
+    "setNewPasswordDesc": "Choose a new password to finish setting up your account."
   }
 }
