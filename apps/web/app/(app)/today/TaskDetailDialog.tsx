@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 import { X, ArrowRight } from "lucide-react";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +16,8 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
   APPOINTMENT: "default",
   TURNOUT: "secondary",
   EXERCISE: "default",
+  SCHEDULED_EVENT: "secondary",
 };
-
-function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
 
 export function TaskDetailDialog({
   task,
@@ -32,6 +30,9 @@ export function TaskDetailDialog({
   barnId: string;
   onClose: () => void;
 }) {
+  const t = useTranslations("today");
+  const locale = useLocale();
+
   // Close on Escape.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -44,13 +45,15 @@ export function TaskDetailDialog({
   const completedAt = task.completion?.completedAt;
   const skipped = task.completion?.skipped && !completedAt;
   const status = completedAt
-    ? `Completed ${new Date(completedAt).toLocaleString([], {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })}`
+    ? t("detail.completed", {
+        datetime: new Date(completedAt).toLocaleString(locale, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }),
+      })
     : skipped
-      ? "Skipped"
-      : "Not done yet";
+      ? t("detail.skipped")
+      : t("detail.notDone");
 
   return (
     <div
@@ -65,42 +68,44 @@ export function TaskDetailDialog({
       >
         <div className="flex items-start justify-between border-b p-4">
           <div className="flex items-center gap-2">
-            <Badge variant={TASK_BADGE_VARIANT[task.taskType]}>{titleCase(task.taskType)}</Badge>
-            <h2 className="font-semibold">{task.animalName}</h2>
+            <Badge variant={TASK_BADGE_VARIANT[task.taskType]}>{t(`taskTypes.${task.taskType}`)}</Badge>
+            <h2 className="font-semibold">{task.animalName || t("locationTypes.barn")}</h2>
           </div>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
-            aria-label="Close"
+            aria-label={t("detail.close")}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <dl className="space-y-3 p-4 text-sm">
-          <Row label="Task" value={task.label} />
-          {task.detail && <Row label="Details" value={task.detail} />}
-          <Row label="Location" value={location} />
+          <Row label={t("detail.task")} value={task.label} />
+          {task.detail && <Row label={t("detail.details")} value={task.detail} />}
+          <Row label={t("detail.location")} value={location} />
           <Row
-            label="Status"
+            label={t("detail.status")}
             value={status}
             valueClassName={cn(
               completedAt && "text-green-700",
               skipped && "text-muted-foreground"
             )}
           />
-          {task.completion?.notes && <Row label="Notes" value={task.completion.notes} />}
+          {task.completion?.notes && <Row label={t("detail.notes")} value={task.completion.notes} />}
         </dl>
 
-        <div className="border-t p-4">
-          <Link
-            href={`/barns/${barnId}/animals/${task.animalId}`}
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            View {task.animalName}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+        {task.animalId && (
+          <div className="border-t p-4">
+            <Link
+              href={`/barns/${barnId}/animals/${task.animalId}`}
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              {t("detail.view", { name: task.animalName })}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

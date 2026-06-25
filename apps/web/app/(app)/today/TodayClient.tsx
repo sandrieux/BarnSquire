@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Bell } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
+import { ChevronLeft, ChevronRight, Bell, Package } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,7 @@ const TASK_COLORS: Record<string, string> = {
   APPOINTMENT: "bg-blue-50 border-blue-200",
   TURNOUT: "bg-purple-50 border-purple-200",
   EXERCISE: "bg-amber-50 border-amber-200",
+  SCHEDULED_EVENT: "bg-slate-50 border-slate-200",
 };
 
 const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "success"> = {
@@ -29,7 +32,11 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
   APPOINTMENT: "default",
   TURNOUT: "secondary",
   EXERCISE: "default",
+  SCHEDULED_EVENT: "secondary",
 };
+
+const SLOTS = ["ALL", "MORNING", "LUNCH", "AFTERNOON", "EVENING"] as const;
+type SlotFilter = (typeof SLOTS)[number];
 
 export function TodayClient({
   barnId,
@@ -41,7 +48,9 @@ export function TodayClient({
   date: string;
 }) {
   const router = useRouter();
-  const [slotFilter, setSlotFilter] = useState<"ALL" | "MORNING" | "LUNCH" | "EVENING">("ALL");
+  const t = useTranslations("today");
+  const locale = useLocale();
+  const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<{ task: Task; location: string } | null>(null);
 
@@ -49,8 +58,8 @@ export function TodayClient({
   const { data: groups = [] } = trpc.today.getDailyView.useQuery({ barnId, date });
 
   const completeTask = trpc.today.completeTask.useMutation({
-    onMutate: ({ feedingScheduleId, appointmentId, turnoutEventId, exerciseScheduleId }) => {
-      const key = feedingScheduleId ?? appointmentId ?? turnoutEventId ?? exerciseScheduleId ?? "";
+    onMutate: ({ feedingScheduleId, appointmentId, turnoutEventId, exerciseScheduleId, scheduledEventId }) => {
+      const key = feedingScheduleId ?? appointmentId ?? turnoutEventId ?? exerciseScheduleId ?? scheduledEventId ?? "";
       setOptimisticDone((prev) => new Set([...prev, key]));
     },
     onSuccess: () => utils.today.getDailyView.invalidate(),
@@ -60,6 +69,8 @@ export function TodayClient({
   const snoozeReminder = trpc.appointment.snoozeReminder.useMutation({
     onSuccess: () => utils.appointment.getDueReminders.invalidate(),
   });
+
+  const { data: refillsDue = [] } = trpc.feedStock.getRefillsDue.useQuery({ barnId });
 
   function navigateDate(delta: number) {
     const d = new Date(date);
@@ -72,11 +83,12 @@ export function TodayClient({
       barnId,
       date,
       taskType: task.taskType,
-      animalId: task.animalId,
+      animalId: task.animalId || undefined,
       feedingScheduleId: task.taskType === "FEEDING" || task.taskType === "MEDICATION" ? task.id : undefined,
       appointmentId: task.taskType === "APPOINTMENT" ? task.id : undefined,
       turnoutEventId: task.taskType === "TURNOUT" ? task.id : undefined,
       exerciseScheduleId: task.taskType === "EXERCISE" ? task.id : undefined,
+      scheduledEventId: task.taskType === "SCHEDULED_EVENT" ? task.id : undefined,
     });
   }
 
@@ -86,7 +98,7 @@ export function TodayClient({
     ...group,
     tasks: slotFilter === "ALL"
       ? group.tasks
-      : group.tasks.filter((t) => t.label.toUpperCase().startsWith(slotFilter)),
+      : group.tasks.filter((t) => t.slot === slotFilter),
   })).filter((g) => g.tasks.length > 0);
 
   const totalTasks = groups.flatMap((g) => g.tasks).length;
@@ -100,10 +112,10 @@ export function TodayClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {isToday ? "Today" : formatDate(date)}
+            {isToday ? t("title") : formatDate(date, locale)}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {doneTasks}/{totalTasks} tasks completed
+            {t("tasksCompleted", { done: doneTasks, total: totalTasks })}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -112,7 +124,7 @@ export function TodayClient({
           </Button>
           {!isToday && (
             <Button variant="outline" size="sm" onClick={() => router.push(`/today?barnId=${barnId}`)}>
-              Today
+              {t("title")}
             </Button>
           )}
           <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
@@ -127,7 +139,7 @@ export function TodayClient({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-orange-800">
               <Bell className="h-4 w-4" />
-              {dueReminders.length} reminder{dueReminders.length > 1 ? "s" : ""} due
+              {t("remindersDue", { count: dueReminders.length })}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -140,7 +152,32 @@ export function TodayClient({
                   className="h-7 text-xs"
                   onClick={() => snoozeReminder.mutate({ id: r.id })}
                 >
-                  Snooze
+                  {t("snooze")}
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Feed refill reminders */}
+      {refillsDue.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
+              <Package className="h-4 w-4" />
+              {t("feedsLow", { count: refillsDue.length })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {refillsDue.map((r) => (
+              <div key={r.feedType} className="flex items-center justify-between text-sm">
+                <span>
+                  <span className="font-medium">{r.feedType}</span>
+                  <span className="text-muted-foreground"> — {t("feedDaysLeft", { days: Math.round(r.daysLeft) })}</span>
+                </span>
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                  <Link href={`/barns/${barnId}/stock`}>{t("addStock")}</Link>
                 </Button>
               </div>
             ))}
@@ -150,14 +187,14 @@ export function TodayClient({
 
       {/* Slot filter */}
       <div className="flex gap-2 flex-wrap">
-        {(["ALL", "MORNING", "LUNCH", "EVENING"] as const).map((slot) => (
+        {SLOTS.map((slot) => (
           <Button
             key={slot}
             variant={slotFilter === slot ? "default" : "outline"}
             size="sm"
             onClick={() => setSlotFilter(slot)}
           >
-            {slot === "ALL" ? "All" : slot.charAt(0) + slot.slice(1).toLowerCase()}
+            {t(`slots.${slot}`)}
           </Button>
         ))}
       </div>
@@ -165,7 +202,7 @@ export function TodayClient({
       {/* Location groups */}
       {filteredGroups.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No tasks for this day.
+          {t("noTasks")}
         </div>
       ) : (
         filteredGroups.map((group) => (
@@ -173,7 +210,7 @@ export function TodayClient({
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <span className="text-xs text-muted-foreground font-normal uppercase tracking-wider">
-                  {group.type === "stall" ? "Stall" : group.type === "pasture" ? "Pasture" : "No location"}
+                  {t(`locationTypes.${group.type}`)}
                 </span>
                 {group.buildingName && (
                   <>
@@ -181,7 +218,7 @@ export function TodayClient({
                     <span className="text-xs text-muted-foreground font-normal">{group.buildingName}</span>
                   </>
                 )}
-                <span className="font-semibold">{group.name}</span>
+                {group.type !== "barn" && <span className="font-semibold">{group.name}</span>}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -194,7 +231,7 @@ export function TodayClient({
                 }, new Map<string, Task[]>())
               ).map(([animalName, tasks]) => (
                 <div key={animalName} className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">{animalName}</p>
+                  {animalName && <p className="text-sm font-medium text-muted-foreground">{animalName}</p>}
                   {tasks.map((task) => {
                     const isDone = optimisticDone.has(task.id) || !!task.completion?.completedAt;
                     const isSkipped = task.completion?.skipped && !task.completion?.completedAt;
@@ -226,18 +263,14 @@ export function TodayClient({
                         <button
                           type="button"
                           className="flex-1 min-w-0 text-left hover:underline cursor-pointer"
-                          title="View details"
+                          title={t("viewDetails")}
                           onClick={() =>
                             setDetail({
                               task,
                               location:
-                                group.type === "unassigned"
-                                  ? "No location"
-                                  : [
-                                      group.type === "stall" ? "Stall" : "Pasture",
-                                      group.buildingName,
-                                      group.name,
-                                    ]
+                                group.type === "barn" || group.type === "unassigned"
+                                  ? t(`locationTypes.${group.type}`)
+                                  : [t(`locationTypes.${group.type}`), group.buildingName, group.name]
                                       .filter(Boolean)
                                       .join(" · "),
                             })
@@ -247,7 +280,7 @@ export function TodayClient({
                           <span className="text-muted-foreground ml-2">{task.detail}</span>
                         </button>
                         <Badge variant={TASK_BADGE_VARIANT[task.taskType]} className="shrink-0 text-xs">
-                          {isSkipped ? "Skipped" : task.taskType.charAt(0) + task.taskType.slice(1).toLowerCase()}
+                          {isSkipped ? t("skipped") : t(`taskTypes.${task.taskType}`)}
                         </Badge>
                       </div>
                     );

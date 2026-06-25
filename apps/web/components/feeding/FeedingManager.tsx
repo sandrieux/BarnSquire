@@ -32,7 +32,7 @@ const WEEKDAYS = [
   { value: 7, label: "Sun" },
 ];
 
-export function FeedingManager({ animalId }: { animalId: string }) {
+export function FeedingManager({ animalId, barnId }: { animalId: string; barnId: string }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
 
@@ -68,6 +68,7 @@ export function FeedingManager({ animalId }: { animalId: string }) {
       {showForm && (
         <FeedingForm
           animalId={animalId}
+          barnId={barnId}
           editing={editing}
           onDone={closeForm}
         />
@@ -157,10 +158,12 @@ export function FeedingManager({ animalId }: { animalId: string }) {
 
 function FeedingForm({
   animalId,
+  barnId,
   editing,
   onDone,
 }: {
   animalId: string;
+  barnId: string;
   editing: Schedule | null;
   onDone: () => void;
 }) {
@@ -171,6 +174,20 @@ function FeedingForm({
   const [repeatDays, setRepeatDays] = useState<number[]>(
     editing?.repeatDays ?? [1, 2, 3, 4, 5, 6, 7]
   );
+
+  // Feed type comes from stock (canonical unit) or "Other (non-stock)" free text.
+  const { data: stockRows = [] } = trpc.feedStock.list.useQuery({ barnId });
+  const stockFeeds = stockRows.filter((r) => r.tracked);
+  const stockUnits = [...new Set(stockRows.map((r) => r.unit).filter((u): u is string => !!u))].sort();
+
+  const OTHER = "__other__";
+  const [selectedFeed, setSelectedFeed] = useState<string>(editing && !editing.isMedication ? editing.feedType : OTHER);
+  const [feedName, setFeedName] = useState(editing?.feedType ?? "");
+  const [unit, setUnit] = useState(editing?.unit ?? "");
+
+  const stockFeed = stockFeeds.find((f) => f.feedType === selectedFeed);
+  const isStock = !isMedication && !!stockFeed;
+  const lockedUnit = stockFeed?.unit ?? "";
 
   const onSuccess = () => {
     utils.feeding.list.invalidate({ animalId });
@@ -192,14 +209,20 @@ function FeedingForm({
       setError("Select at least one day");
       return;
     }
+    const resolvedFeedType = isStock ? selectedFeed : feedName.trim();
+    if (!resolvedFeedType) {
+      setError(isMedication ? "Medication name is required" : "Feed type is required");
+      return;
+    }
+    const resolvedUnit = (isStock ? lockedUnit : unit.trim()) || undefined;
     const form = new FormData(e.currentTarget);
     const endDateStr = form.get("endDate") as string;
     const customTime = form.get("customTime") as string;
 
     const base = {
-      feedType: form.get("feedType") as string,
+      feedType: resolvedFeedType,
       quantity: form.get("quantity") as string,
-      unit: (form.get("unit") as string) || undefined,
+      unit: resolvedUnit,
       slot: slot as "MORNING" | "LUNCH" | "EVENING" | "CUSTOM",
       customTime: slot === "CUSTOM" ? customTime : undefined,
       instructions: (form.get("instructions") as string) || undefined,
@@ -245,13 +268,42 @@ function FeedingForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="feedType">{isMedication ? "Medication name" : "Feed type"} *</Label>
-              <Input
-                id="feedType"
-                name="feedType"
-                required
-                defaultValue={editing?.feedType}
-                placeholder={isMedication ? "Bute" : "Orchard Grass Hay"}
-              />
+              {isMedication ? (
+                <Input
+                  id="feedType"
+                  value={feedName}
+                  onChange={(e) => setFeedName(e.target.value)}
+                  placeholder="Bute"
+                />
+              ) : (
+                <>
+                  <Select
+                    id="feedType"
+                    value={isStock ? selectedFeed : OTHER}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSelectedFeed(v);
+                      const sf = stockFeeds.find((f) => f.feedType === v);
+                      if (sf) setUnit(sf.unit ?? "");
+                    }}
+                  >
+                    {stockFeeds.map((f) => (
+                      <option key={f.feedType} value={f.feedType}>
+                        {f.feedType}
+                        {f.unit ? ` (${f.unit})` : ""}
+                      </option>
+                    ))}
+                    <option value={OTHER}>Other (non-stock)…</option>
+                  </Select>
+                  {!isStock && (
+                    <Input
+                      value={feedName}
+                      onChange={(e) => setFeedName(e.target.value)}
+                      placeholder="Beet pulp"
+                    />
+                  )}
+                </>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">
@@ -259,8 +311,25 @@ function FeedingForm({
                 <Input id="quantity" name="quantity" required defaultValue={editing?.quantity} placeholder="2" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
-                <Input id="unit" name="unit" defaultValue={editing?.unit ?? ""} placeholder="flakes" />
+                <Label htmlFor="unit">Unit{isStock ? " (from stock)" : ""}</Label>
+                {isStock ? (
+                  <Input id="unit" value={lockedUnit} disabled readOnly />
+                ) : (
+                  <>
+                    <Input
+                      id="unit"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      placeholder="flakes"
+                      list="feed-unit-options"
+                    />
+                    <datalist id="feed-unit-options">
+                      {stockUnits.map((u) => (
+                        <option key={u} value={u} />
+                      ))}
+                    </datalist>
+                  </>
+                )}
               </div>
             </div>
           </div>
