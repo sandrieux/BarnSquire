@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function RegisterForm() {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +27,7 @@ export function RegisterForm() {
     const confirm = form.get("confirm") as string;
 
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t("passwordsNoMatch"));
       setLoading(false);
       return;
     }
@@ -38,7 +40,7 @@ export function RegisterForm() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError((data as { error?: string }).error ?? "Registration failed");
+      setError((data as { error?: string }).error ?? t("registrationFailed"));
       setLoading(false);
       return;
     }
@@ -50,29 +52,29 @@ export function RegisterForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Create account</CardTitle>
+        <CardTitle className="text-xl">{t("createAccount")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Full name</Label>
+            <Label htmlFor="name">{t("fullName")}</Label>
             <Input id="name" name="name" required placeholder="Jane Smith" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("email")}</Label>
             <Input id="email" name="email" type="email" required placeholder="you@example.com" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required minLength={8} placeholder="Min. 8 characters" />
+            <Label htmlFor="password">{t("password")}</Label>
+            <Input id="password" name="password" type="password" required minLength={8} placeholder={t("minChars")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirm">Confirm password</Label>
-            <Input id="confirm" name="confirm" type="password" required placeholder="Repeat password" />
+            <Label htmlFor="confirm">{t("confirmPassword")}</Label>
+            <Input id="confirm" name="confirm" type="password" required placeholder={t("repeatPassword")} />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? t("creatingAccount") : t("createAccount")}
           </Button>
         </form>
       </CardContent>

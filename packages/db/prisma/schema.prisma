@@ -16,6 +16,7 @@ model User {
   emailVerified      DateTime?
   passwordHash       String?
   mustChangePassword Boolean   @default(false)
+  locale             String?
   image              String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt

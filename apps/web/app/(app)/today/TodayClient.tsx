@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { ChevronLeft, ChevronRight, Bell, Package } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
@@ -47,6 +48,8 @@ export function TodayClient({
   date: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("today");
+  const locale = useLocale();
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<{ task: Task; location: string } | null>(null);
@@ -109,10 +112,10 @@ export function TodayClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {isToday ? "Today" : formatDate(date)}
+            {isToday ? t("title") : formatDate(date, locale)}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {doneTasks}/{totalTasks} tasks completed
+            {t("tasksCompleted", { done: doneTasks, total: totalTasks })}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -121,7 +124,7 @@ export function TodayClient({
           </Button>
           {!isToday && (
             <Button variant="outline" size="sm" onClick={() => router.push(`/today?barnId=${barnId}`)}>
-              Today
+              {t("title")}
             </Button>
           )}
           <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
@@ -136,7 +139,7 @@ export function TodayClient({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-orange-800">
               <Bell className="h-4 w-4" />
-              {dueReminders.length} reminder{dueReminders.length > 1 ? "s" : ""} due
+              {t("remindersDue", { count: dueReminders.length })}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -149,7 +152,7 @@ export function TodayClient({
                   className="h-7 text-xs"
                   onClick={() => snoozeReminder.mutate({ id: r.id })}
                 >
-                  Snooze
+                  {t("snooze")}
                 </Button>
               </div>
             ))}
@@ -163,7 +166,7 @@ export function TodayClient({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
               <Package className="h-4 w-4" />
-              {refillsDue.length} feed{refillsDue.length > 1 ? "s" : ""} running low
+              {t("feedsLow", { count: refillsDue.length })}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -171,10 +174,10 @@ export function TodayClient({
               <div key={r.feedType} className="flex items-center justify-between text-sm">
                 <span>
                   <span className="font-medium">{r.feedType}</span>
-                  <span className="text-muted-foreground"> — ~{Math.round(r.daysLeft)}d of feed left</span>
+                  <span className="text-muted-foreground"> — {t("feedDaysLeft", { days: Math.round(r.daysLeft) })}</span>
                 </span>
                 <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                  <Link href={`/barns/${barnId}/stock`}>Add stock</Link>
+                  <Link href={`/barns/${barnId}/stock`}>{t("addStock")}</Link>
                 </Button>
               </div>
             ))}
@@ -191,7 +194,7 @@ export function TodayClient({
             size="sm"
             onClick={() => setSlotFilter(slot)}
           >
-            {slot === "ALL" ? "All" : slot.charAt(0) + slot.slice(1).toLowerCase()}
+            {t(`slots.${slot}`)}
           </Button>
         ))}
       </div>
@@ -199,7 +202,7 @@ export function TodayClient({
       {/* Location groups */}
       {filteredGroups.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No tasks for this day.
+          {t("noTasks")}
         </div>
       ) : (
         filteredGroups.map((group) => (
@@ -207,13 +210,7 @@ export function TodayClient({
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <span className="text-xs text-muted-foreground font-normal uppercase tracking-wider">
-                  {group.type === "stall"
-                    ? "Stall"
-                    : group.type === "pasture"
-                    ? "Pasture"
-                    : group.type === "barn"
-                    ? "Barn"
-                    : "No location"}
+                  {t(`locationTypes.${group.type}`)}
                 </span>
                 {group.buildingName && (
                   <>
@@ -266,20 +263,14 @@ export function TodayClient({
                         <button
                           type="button"
                           className="flex-1 min-w-0 text-left hover:underline cursor-pointer"
-                          title="View details"
+                          title={t("viewDetails")}
                           onClick={() =>
                             setDetail({
                               task,
                               location:
-                                group.type === "barn"
-                                  ? "Barn"
-                                  : group.type === "unassigned"
-                                  ? "No location"
-                                  : [
-                                      group.type === "stall" ? "Stall" : "Pasture",
-                                      group.buildingName,
-                                      group.name,
-                                    ]
+                                group.type === "barn" || group.type === "unassigned"
+                                  ? t(`locationTypes.${group.type}`)
+                                  : [t(`locationTypes.${group.type}`), group.buildingName, group.name]
                                       .filter(Boolean)
                                       .join(" · "),
                             })
@@ -289,7 +280,7 @@ export function TodayClient({
                           <span className="text-muted-foreground ml-2">{task.detail}</span>
                         </button>
                         <Badge variant={TASK_BADGE_VARIANT[task.taskType]} className="shrink-0 text-xs">
-                          {isSkipped ? "Skipped" : task.taskType.charAt(0) + task.taskType.slice(1).toLowerCase()}
+                          {isSkipped ? t("skipped") : t(`taskTypes.${task.taskType}`)}
                         </Badge>
                       </div>
                     );

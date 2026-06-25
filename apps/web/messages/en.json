@@ -1,0 +1,65 @@
+{
+  "nav": {
+    "today": "Today",
+    "animals": "Animals",
+    "locations": "Locations",
+    "schedule": "Schedule",
+    "stock": "Stock",
+    "settings": "Settings",
+    "admin": "Admin",
+    "barnSection": "Barn"
+  },
+  "topnav": {
+    "changePassword": "Change password",
+    "signOut": "Sign out"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "fr-CA": "Français (Canada)",
+    "fr-FR": "Français (France)"
+  },
+  "today": {
+    "title": "Today",
+    "tasksCompleted": "{done}/{total} tasks completed",
+    "remindersDue": "{count, plural, one {# reminder due} other {# reminders due}}",
+    "snooze": "Snooze",
+    "feedsLow": "{count, plural, one {# feed running low} other {# feeds running low}}",
+    "feedDaysLeft": "~{days}d of feed left",
+    "addStock": "Add stock",
+    "noTasks": "No tasks for this day.",
+    "viewDetails": "View details",
+    "skipped": "Skipped",
+    "slots": { "ALL": "All", "MORNING": "Morning", "LUNCH": "Lunch", "AFTERNOON": "Afternoon", "EVENING": "Evening" },
+    "locationTypes": { "stall": "Stall", "pasture": "Pasture", "barn": "Barn", "unassigned": "No location" },
+    "taskTypes": {
+      "FEEDING": "Feeding",
+      "MEDICATION": "Medication",
+      "APPOINTMENT": "Appointment",
+      "TURNOUT": "Turnout",
+      "EXERCISE": "Exercise",
+      "SCHEDULED_EVENT": "Scheduled event"
+    }
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "email": "Email",
+    "password": "Password",
+    "invalidCredentials": "Invalid email or password",
+    "createAccount": "Create account",
+    "creatingAccount": "Creating account…",
+    "fullName": "Full name",
+    "minChars": "Min. 8 characters",
+    "confirmPassword": "Confirm password",
+    "repeatPassword": "Repeat password",
+    "passwordsNoMatch": "Passwords do not match",
+    "registrationFailed": "Registration failed",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "setPassword": "Set password",
+    "saving": "Saving…",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordUpdated": "Password updated. Redirecting you to sign in…"
+  }
+}
