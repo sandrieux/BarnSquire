@@ -87,6 +87,7 @@ model Barn {
   animals      Animal[]
   appointments Appointment[]
   scheduledEvents ScheduledEvent[]
+  feedStocks   FeedStock[]
 }
 
 model BarnMembership {
@@ -280,6 +281,25 @@ model FeedingSchedule {
 
   animal      Animal           @relation(fields: [animalId], references: [id], onDelete: Cascade)
   completions TaskCompletion[]
+}
+
+// On-hand inventory for a feed type (one row per barn + feedType). The balance
+// is `servingsRemaining` as of `asOfDate`; the current balance and days-of-feed
+// remaining are predicted forward from the feeding schedules' consumption rate.
+model FeedStock {
+  id                   String   @id @default(cuid())
+  barnId               String
+  feedType             String
+  servingsRemaining    Float    @default(0)
+  asOfDate             DateTime @default(now())
+  thresholdDays        Int      @default(3)
+  servingsPerContainer Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  barn Barn @relation(fields: [barnId], references: [id], onDelete: Cascade)
+
+  @@unique([barnId, feedType])
 }
 
 // ─── Appointments ─────────────────────────────────────────────────────────────
