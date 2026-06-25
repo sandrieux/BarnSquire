@@ -6,6 +6,7 @@ import { createServerCaller } from "@/lib/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatTime } from "@/lib/utils";
+import { ScheduledEventManager } from "@/components/schedule/ScheduledEventManager";
 
 const TYPE_LABELS: Record<string, string> = {
   VET: "Veterinary",
@@ -63,6 +64,9 @@ export default async function SchedulePage({ params }: { params: Promise<{ barnI
           </CardContent>
         </Card>
       )}
+
+      {/* Barn-level recurring events (stall cleaning, arena dragging, …) */}
+      <ScheduledEventManager barnId={barnId} />
 
       {/* Upcoming appointments grouped by date */}
       <div className="space-y-4">

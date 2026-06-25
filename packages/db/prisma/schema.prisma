@@ -16,6 +16,7 @@ model User {
   emailVerified      DateTime?
   passwordHash       String?
   mustChangePassword Boolean   @default(false)
+  locale             String?
   image              String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -86,6 +87,8 @@ model Barn {
   arenas       Arena[]
   animals      Animal[]
   appointments Appointment[]
+  scheduledEvents ScheduledEvent[]
+  feedStocks   FeedStock[]
 }
 
 model BarnMembership {
@@ -281,6 +284,26 @@ model FeedingSchedule {
   completions TaskCompletion[]
 }
 
+// On-hand inventory for a feed type (one row per barn + feedType). The balance
+// is `servingsRemaining` as of `asOfDate`; the current balance and days-of-feed
+// remaining are predicted forward from the feeding schedules' consumption rate.
+model FeedStock {
+  id                   String   @id @default(cuid())
+  barnId               String
+  feedType             String
+  unit                 String?
+  servingsRemaining    Float    @default(0)
+  asOfDate             DateTime @default(now())
+  thresholdDays        Int      @default(3)
+  servingsPerContainer Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  barn Barn @relation(fields: [barnId], references: [id], onDelete: Cascade)
+
+  @@unique([barnId, feedType])
+}
+
 // ─── Appointments ─────────────────────────────────────────────────────────────
 
 enum AppointmentType {
@@ -415,6 +438,27 @@ enum TaskType {
   APPOINTMENT
   TURNOUT
   EXERCISE
+  SCHEDULED_EVENT
+}
+
+// A recurring barn-level chore not tied to any animal (e.g. "Stall cleaning").
+// Time-of-day window + ISO weekday repeats, mirroring ExerciseSchedule.
+model ScheduledEvent {
+  id         String   @id @default(cuid())
+  barnId     String
+  title      String
+  startTime  String   // time of day, "HH:MM"
+  endTime    String?  // optional end time, "HH:MM"
+  repeatDays Int[]    // ISO weekdays this applies to (1=Mon..7=Sun)
+  notes      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  barn        Barn             @relation(fields: [barnId], references: [id], onDelete: Cascade)
+  completions TaskCompletion[]
+
+  @@index([barnId])
 }
 
 model TaskCompletion {
@@ -432,19 +476,22 @@ model TaskCompletion {
   appointmentId     String?
   turnoutEventId    String?
   exerciseScheduleId String?
-  animalId          String
+  scheduledEventId  String?
+  animalId          String?
 
   feedingSchedule  FeedingSchedule?  @relation(fields: [feedingScheduleId], references: [id])
   appointment      Appointment?      @relation(fields: [appointmentId], references: [id])
   turnoutEvent     TurnoutEvent?     @relation(fields: [turnoutEventId], references: [id])
   exerciseSchedule ExerciseSchedule? @relation(fields: [exerciseScheduleId], references: [id])
-  animal           Animal            @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  scheduledEvent   ScheduledEvent?   @relation(fields: [scheduledEventId], references: [id])
+  animal           Animal?           @relation(fields: [animalId], references: [id], onDelete: Cascade)
   completedBy      User?             @relation(fields: [completedByUserId], references: [id])
 
   @@unique([feedingScheduleId, scheduledDate])
   @@unique([appointmentId, scheduledDate])
   @@unique([turnoutEventId, scheduledDate])
   @@unique([exerciseScheduleId, scheduledDate])
+  @@unique([scheduledEventId, scheduledDate])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

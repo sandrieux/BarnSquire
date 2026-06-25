@@ -15,6 +15,19 @@ async function assertBarnAccess(
   return membership;
 }
 
+type Slot = "MORNING" | "LUNCH" | "AFTERNOON" | "EVENING";
+
+// Map a "HH:MM" time of day to a Today filter slot. Windows:
+// Morning 06:00–12:00, Lunch 12:00–13:00, Afternoon 13:00–18:00, Evening otherwise.
+function timeToSlot(hhmm: string): Slot {
+  const [h = 0, m = 0] = hhmm.split(":").map(Number);
+  const mins = h * 60 + m;
+  if (mins >= 360 && mins < 720) return "MORNING";
+  if (mins >= 720 && mins < 780) return "LUNCH";
+  if (mins >= 780 && mins < 1080) return "AFTERNOON";
+  return "EVENING";
+}
+
 export const todayRouter = router({
   getDailyView: protectedProcedure
     .input(z.object({ barnId: z.string().cuid(), date: z.string().date() }))
@@ -26,7 +39,7 @@ export const todayRouter = router({
       const targetDate = new Date(ty!, tm! - 1, td!);
 
       const weekday = targetDate.getDay() === 0 ? 7 : targetDate.getDay();
-      const [animals, feedings, appointments, turnouts, exercises, completions] = await Promise.all([
+      const [animals, feedings, appointments, turnouts, exercises, scheduledEvents, completions] = await Promise.all([
         ctx.db.animal.findMany({
           where: { barnId: input.barnId, isActive: true },
           include: {
@@ -74,17 +87,25 @@ export const todayRouter = router({
           },
           orderBy: { startTime: "asc" },
         }),
+        ctx.db.scheduledEvent.findMany({
+          where: {
+            isActive: true,
+            barnId: input.barnId,
+            repeatDays: { has: weekday },
+          },
+          orderBy: { startTime: "asc" },
+        }),
         ctx.db.taskCompletion.findMany({
           where: {
             scheduledDate: targetDate,
-            animal: { barnId: input.barnId },
+            OR: [{ animal: { barnId: input.barnId } }, { scheduledEvent: { barnId: input.barnId } }],
           },
         }),
       ]);
 
       const completionMap = new Map(
         completions.map((c) => [
-          c.feedingScheduleId ?? c.appointmentId ?? c.turnoutEventId ?? c.exerciseScheduleId,
+          c.feedingScheduleId ?? c.appointmentId ?? c.turnoutEventId ?? c.exerciseScheduleId ?? c.scheduledEventId,
           c,
         ])
       );
@@ -100,15 +121,16 @@ export const todayRouter = router({
       type LocationGroup = {
         id: string;
         name: string;
-        type: "stall" | "pasture" | "unassigned";
+        type: "stall" | "pasture" | "unassigned" | "barn";
         buildingName?: string;
         tasks: Array<{
           id: string;
-          taskType: "FEEDING" | "MEDICATION" | "APPOINTMENT" | "TURNOUT" | "EXERCISE";
+          taskType: "FEEDING" | "MEDICATION" | "APPOINTMENT" | "TURNOUT" | "EXERCISE" | "SCHEDULED_EVENT";
           animalId: string;
           animalName: string;
           label: string;
           detail: string;
+          slot: Slot;
           completion: typeof completions[number] | undefined;
         }>;
       };
@@ -118,7 +140,7 @@ export const todayRouter = router({
       const getOrCreateGroup = (
         groupId: string,
         name: string,
-        type: "stall" | "pasture" | "unassigned",
+        type: "stall" | "pasture" | "unassigned" | "barn",
         buildingName?: string
       ): LocationGroup => {
         if (!groups.has(groupId)) {
@@ -144,6 +166,7 @@ export const todayRouter = router({
           animalName: animal.name,
           label: `${feeding.slot}: ${feeding.feedType}`,
           detail: `${feeding.quantity}${feeding.unit ? " " + feeding.unit : ""}${feeding.instructions ? " — " + feeding.instructions : ""}`,
+          slot: feeding.slot === "CUSTOM" ? timeToSlot(feeding.customTime ?? "00:00") : (feeding.slot as Slot),
           completion: completionMap.get(feeding.id),
         });
       }
@@ -156,7 +179,9 @@ export const todayRouter = router({
         const groupType = animal.homeStallId ? "stall" : animal.homePastureId ? "pasture" : "unassigned";
         const buildingName = animal.homeStall?.building?.name;
         const group = getOrCreateGroup(groupId, groupName, groupType, buildingName);
-        const time = new Date(appt.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const apptDate = new Date(appt.scheduledAt);
+        const time = apptDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const apptHhmm = `${String(apptDate.getHours()).padStart(2, "0")}:${String(apptDate.getMinutes()).padStart(2, "0")}`;
         group.tasks.push({
           id: appt.id,
           taskType: "APPOINTMENT",
@@ -164,6 +189,7 @@ export const todayRouter = router({
           animalName: animal.name,
           label: `${appt.type}: ${appt.title}`,
           detail: `${time}${appt.providerName ? " — " + appt.providerName : ""}`,
+          slot: timeToSlot(apptHhmm),
           completion: completionMap.get(appt.id),
         });
       }
@@ -184,6 +210,7 @@ export const todayRouter = router({
           animalName: animal.name,
           label: `Turnout → ${toName}`,
           detail: `${turnout.startTime} – ${turnout.endTime}`,
+          slot: timeToSlot(turnout.startTime),
           completion: completionMap.get(turnout.id),
         });
       }
@@ -209,11 +236,30 @@ export const todayRouter = router({
           animalName: animal.name,
           label: `Exercise: ${typeLabel}`,
           detail: detailParts.join(" · "),
+          slot: timeToSlot(exercise.startTime),
           completion: completionMap.get(exercise.id),
         });
       }
 
+      // Barn-level scheduled events (animal-less) go in a dedicated "Barn" group.
+      for (const event of scheduledEvents) {
+        const group = getOrCreateGroup("barn", "Barn", "barn");
+        group.tasks.push({
+          id: event.id,
+          taskType: "SCHEDULED_EVENT",
+          animalId: "",
+          animalName: "",
+          label: event.title,
+          detail: event.endTime ? `${event.startTime} – ${event.endTime}` : event.startTime,
+          slot: timeToSlot(event.startTime),
+          completion: completionMap.get(event.id),
+        });
+      }
+
       return Array.from(groups.values()).sort((a, b) => {
+        // Barn-level group always sorts first.
+        if (a.type === "barn") return -1;
+        if (b.type === "barn") return 1;
         if (a.buildingName && b.buildingName) return a.buildingName.localeCompare(b.buildingName);
         return a.name.localeCompare(b.name);
       });
@@ -223,12 +269,13 @@ export const todayRouter = router({
     .input(z.object({
       barnId: z.string().cuid(),
       date: z.string().date(),
-      taskType: z.enum(["FEEDING", "MEDICATION", "APPOINTMENT", "TURNOUT", "EXERCISE"]),
-      animalId: z.string().cuid(),
+      taskType: z.enum(["FEEDING", "MEDICATION", "APPOINTMENT", "TURNOUT", "EXERCISE", "SCHEDULED_EVENT"]),
+      animalId: z.string().cuid().optional(),
       feedingScheduleId: z.string().cuid().optional(),
       appointmentId: z.string().cuid().optional(),
       turnoutEventId: z.string().cuid().optional(),
       exerciseScheduleId: z.string().cuid().optional(),
+      scheduledEventId: z.string().cuid().optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -248,6 +295,9 @@ export const todayRouter = router({
             : undefined as never,
           exerciseScheduleId_scheduledDate: input.exerciseScheduleId
             ? { exerciseScheduleId: input.exerciseScheduleId, scheduledDate }
+            : undefined as never,
+          scheduledEventId_scheduledDate: input.scheduledEventId
+            ? { scheduledEventId: input.scheduledEventId, scheduledDate }
             : undefined as never,
         } as never,
         create: {
@@ -269,12 +319,13 @@ export const todayRouter = router({
     .input(z.object({
       barnId: z.string().cuid(),
       date: z.string().date(),
-      taskType: z.enum(["FEEDING", "MEDICATION", "APPOINTMENT", "TURNOUT", "EXERCISE"]),
-      animalId: z.string().cuid(),
+      taskType: z.enum(["FEEDING", "MEDICATION", "APPOINTMENT", "TURNOUT", "EXERCISE", "SCHEDULED_EVENT"]),
+      animalId: z.string().cuid().optional(),
       feedingScheduleId: z.string().cuid().optional(),
       appointmentId: z.string().cuid().optional(),
       turnoutEventId: z.string().cuid().optional(),
       exerciseScheduleId: z.string().cuid().optional(),
+      scheduledEventId: z.string().cuid().optional(),
       skipReason: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -289,6 +340,7 @@ export const todayRouter = router({
           appointmentId: input.appointmentId,
           turnoutEventId: input.turnoutEventId,
           exerciseScheduleId: input.exerciseScheduleId,
+          scheduledEventId: input.scheduledEventId,
           skipped: true,
           skipReason: input.skipReason,
           completedByUserId: ctx.session.user.id,
