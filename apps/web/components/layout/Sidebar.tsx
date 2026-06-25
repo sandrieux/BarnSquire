@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { CalendarDays, Home, MapPin, User2, Settings, ShieldCheck, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,23 +13,24 @@ interface SidebarProps {
 
 export function Sidebar({ barnId, isGlobalAdmin }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   const mainNav = [
-    { href: "/today", label: "Today", icon: Home },
+    { href: "/today", label: t("today"), icon: Home },
   ];
 
   const barnNav = barnId
     ? [
-        { href: `/barns/${barnId}/animals`, label: "Animals", icon: User2 },
-        { href: `/barns/${barnId}/locations`, label: "Locations", icon: MapPin },
-        { href: `/barns/${barnId}/schedule`, label: "Schedule", icon: CalendarDays },
-        { href: `/barns/${barnId}/stock`, label: "Stock", icon: Package },
-        { href: `/barns/${barnId}/settings`, label: "Settings", icon: Settings },
+        { href: `/barns/${barnId}/animals`, label: t("animals"), icon: User2 },
+        { href: `/barns/${barnId}/locations`, label: t("locations"), icon: MapPin },
+        { href: `/barns/${barnId}/schedule`, label: t("schedule"), icon: CalendarDays },
+        { href: `/barns/${barnId}/stock`, label: t("stock"), icon: Package },
+        { href: `/barns/${barnId}/settings`, label: t("settings"), icon: Settings },
       ]
     : [];
 
   const adminNav = isGlobalAdmin
-    ? [{ href: "/admin", label: "Admin", icon: ShieldCheck }]
+    ? [{ href: "/admin", label: t("admin"), icon: ShieldCheck }]
     : [];
 
   return (
@@ -45,7 +47,7 @@ export function Sidebar({ barnId, isGlobalAdmin }: SidebarProps) {
         {barnNav.length > 0 && (
           <>
             <div className="pt-3 pb-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">Barn</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">{t("barnSection")}</p>
             </div>
             {barnNav.map(({ href, label, icon: Icon }) => (
               <NavLink key={href} href={href} label={label} icon={<Icon className="h-4 w-4" />} active={pathname.startsWith(href)} />

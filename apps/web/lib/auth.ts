@@ -36,6 +36,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name,
           email: user.email,
           mustChangePassword: user.mustChangePassword,
+          locale: user.locale ?? undefined,
         };
       },
     }),
@@ -45,6 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token["id"] = user.id;
         token["mustChangePassword"] = user.mustChangePassword;
+        token["locale"] = user.locale;
       }
       return token;
     },
@@ -52,6 +54,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token["id"] as string;
         session.user.mustChangePassword = Boolean(token["mustChangePassword"]);
+        session.user.locale = (token["locale"] as string | undefined) ?? undefined;
       }
       return session;
     },

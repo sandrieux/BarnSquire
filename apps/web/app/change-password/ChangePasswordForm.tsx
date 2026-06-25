@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function ChangePasswordForm() {
+  const t = useTranslations("auth");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
@@ -27,8 +29,8 @@ export function ChangePasswordForm() {
     const form = new FormData(e.currentTarget);
     const newPassword = form.get("newPassword") as string;
     const confirm = form.get("confirm") as string;
-    if (newPassword.length < 8) return setError("Password must be at least 8 characters");
-    if (newPassword !== confirm) return setError("Passwords do not match");
+    if (newPassword.length < 8) return setError(t("passwordTooShort"));
+    if (newPassword !== confirm) return setError(t("passwordsNoMatch"));
     changePassword.mutate({ newPassword });
   }
 
@@ -36,7 +38,7 @@ export function ChangePasswordForm() {
     return (
       <Card>
         <CardContent className="p-6 text-center text-sm text-muted-foreground">
-          Password updated. Redirecting you to sign in…
+          {t("passwordUpdated")}
         </CardContent>
       </Card>
     );
@@ -47,16 +49,16 @@ export function ChangePasswordForm() {
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="newPassword">New password</Label>
+            <Label htmlFor="newPassword">{t("newPassword")}</Label>
             <Input id="newPassword" name="newPassword" type="password" required placeholder="••••••••" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirm">Confirm new password</Label>
+            <Label htmlFor="confirm">{t("confirmNewPassword")}</Label>
             <Input id="confirm" name="confirm" type="password" required placeholder="••••••••" />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={changePassword.isPending}>
-            {changePassword.isPending ? "Saving…" : "Set password"}
+            {changePassword.isPending ? t("saving") : t("setPassword")}
           </Button>
         </form>
       </CardContent>

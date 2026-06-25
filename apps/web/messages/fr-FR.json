@@ -1,0 +1,65 @@
+{
+  "nav": {
+    "today": "Aujourd'hui",
+    "animals": "Animaux",
+    "locations": "Emplacements",
+    "schedule": "Planning",
+    "stock": "Stock",
+    "settings": "Paramètres",
+    "admin": "Admin",
+    "barnSection": "Écurie"
+  },
+  "topnav": {
+    "changePassword": "Modifier le mot de passe",
+    "signOut": "Se déconnecter"
+  },
+  "language": {
+    "label": "Langue",
+    "en": "English",
+    "fr-CA": "Français (Canada)",
+    "fr-FR": "Français (France)"
+  },
+  "today": {
+    "title": "Aujourd'hui",
+    "tasksCompleted": "{done}/{total} tâches terminées",
+    "remindersDue": "{count, plural, one {# rappel à traiter} other {# rappels à traiter}}",
+    "snooze": "Reporter",
+    "feedsLow": "{count, plural, one {# aliment bientôt épuisé} other {# aliments bientôt épuisés}}",
+    "feedDaysLeft": "~{days} j d'aliment restant",
+    "addStock": "Ajouter au stock",
+    "noTasks": "Aucune tâche pour ce jour.",
+    "viewDetails": "Voir les détails",
+    "skipped": "Passé",
+    "slots": { "ALL": "Tout", "MORNING": "Matin", "LUNCH": "Midi", "AFTERNOON": "Après-midi", "EVENING": "Soir" },
+    "locationTypes": { "stall": "Box", "pasture": "Pâture", "barn": "Écurie", "unassigned": "Aucun emplacement" },
+    "taskTypes": {
+      "FEEDING": "Alimentation",
+      "MEDICATION": "Médication",
+      "APPOINTMENT": "Rendez-vous",
+      "TURNOUT": "Mise au pré",
+      "EXERCISE": "Exercice",
+      "SCHEDULED_EVENT": "Événement planifié"
+    }
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signingIn": "Connexion…",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "invalidCredentials": "E-mail ou mot de passe invalide",
+    "createAccount": "Créer un compte",
+    "creatingAccount": "Création du compte…",
+    "fullName": "Nom complet",
+    "minChars": "8 caractères minimum",
+    "confirmPassword": "Confirmer le mot de passe",
+    "repeatPassword": "Répéter le mot de passe",
+    "passwordsNoMatch": "Les mots de passe ne correspondent pas",
+    "registrationFailed": "Échec de l'inscription",
+    "newPassword": "Nouveau mot de passe",
+    "confirmNewPassword": "Confirmer le nouveau mot de passe",
+    "setPassword": "Définir le mot de passe",
+    "saving": "Enregistrement…",
+    "passwordTooShort": "Le mot de passe doit comporter au moins 8 caractères",
+    "passwordUpdated": "Mot de passe mis à jour. Redirection vers la connexion…"
+  }
+}
