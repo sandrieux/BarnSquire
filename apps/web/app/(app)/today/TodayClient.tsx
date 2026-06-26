@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn, formatDate } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
+import { FeedPrepTable } from "@/components/today/FeedPrepTable";
 
 type Group = RouterOutputs["today"]["getDailyView"][number];
 type Task = Group["tasks"][number];
@@ -220,6 +221,14 @@ export function TodayClient({
           </Button>
         ))}
       </div>
+
+      {/* Food prep matrix */}
+      <FeedPrepTable
+        groups={groups}
+        slotFilter={slotFilter}
+        barnName={barns.find((b) => b.id === barnId)?.name ?? ""}
+        date={date}
+      />
 
       {/* Location groups */}
       {filteredGroups.length === 0 ? (

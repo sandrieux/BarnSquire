@@ -53,6 +53,13 @@
       "close": "Close"
     }
   },
+  "foodPrep": {
+    "title": "Food prep",
+    "animal": "Animal",
+    "med": "Med",
+    "print": "Print",
+    "printSheetTitle": "Food prep sheet"
+  },
   "settings": {
     "title": "Barn settings",
     "details": "Details",

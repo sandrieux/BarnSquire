@@ -53,6 +53,13 @@
       "close": "Fermer"
     }
   },
+  "foodPrep": {
+    "title": "Préparation des repas",
+    "animal": "Animal",
+    "med": "Méd",
+    "print": "Imprimer",
+    "printSheetTitle": "Fiche de préparation des repas"
+  },
   "settings": {
     "title": "Paramètres de l'écurie",
     "details": "Détails",
