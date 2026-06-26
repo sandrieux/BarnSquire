@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
+import { assertAnimalReadAccess } from "../access";
 import { createTurnoutEventSchema, updateTurnoutEventSchema } from "@barnsquire/validators";
 
 async function assertAnimalBarnAccess(
@@ -97,7 +98,7 @@ export const turnoutRouter = router({
         });
         if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
       } else if (input.animalId) {
-        await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId, "CARETAKER");
+        await assertAnimalReadAccess(ctx.db, ctx.session.user.id, input.animalId);
       }
 
       // When a date is given, only return windows that apply on its weekday.

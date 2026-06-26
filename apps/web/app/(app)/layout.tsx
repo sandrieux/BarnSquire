@@ -16,6 +16,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const caller = await createServerCaller();
   const barns = await caller.barn.list();
 
+  // A user with no staff membership but owned animals is a read-only owner →
+  // send them to their portal instead of the empty barn shell.
+  if (barns.length === 0) {
+    const owned = await caller.owner.listAnimals();
+    if (owned.length > 0) redirect("/owner");
+  }
+
   return (
     <TRPCProvider>
       <div className="flex h-screen overflow-hidden">

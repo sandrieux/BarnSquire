@@ -24,7 +24,7 @@ function titleCase(s: string) {
   return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
-export function LedgerManager({ animalId }: { animalId: string }) {
+export function LedgerManager({ animalId, readOnly = false }: { animalId: string; readOnly?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -110,7 +110,7 @@ export function LedgerManager({ animalId }: { animalId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Ledger</h2>
-        {!showForm && (
+        {!showForm && !readOnly && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add entry
@@ -119,7 +119,7 @@ export function LedgerManager({ animalId }: { animalId: string }) {
       </div>
 
       {/* Add entry form */}
-      {showForm && (
+      {showForm && !readOnly && (
         <Card>
           <CardContent className="p-4">
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -262,7 +262,7 @@ export function LedgerManager({ animalId }: { animalId: string }) {
                   </div>
                 )}
               </div>
-              {item.source === "custom" && (
+              {item.source === "custom" && !readOnly && (
                 <button
                   className={cn(
                     "shrink-0 text-muted-foreground hover:text-destructive transition-colors",

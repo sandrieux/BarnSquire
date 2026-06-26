@@ -87,9 +87,11 @@ function daysLabel(days: number[]) {
 export function TurnoutManager({
   animalId,
   capacity,
+  readOnly = false,
 }: {
   animalId: string;
   capacity: CapacityStatus;
+  readOnly?: boolean;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TurnoutEvent | null>(null);
@@ -113,7 +115,7 @@ export function TurnoutManager({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Turnout schedule</h2>
-        {!showForm && (
+        {!showForm && !readOnly && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Schedule turnout
@@ -121,7 +123,7 @@ export function TurnoutManager({
         )}
       </div>
 
-      {showForm && (
+      {showForm && !readOnly && (
         <TurnoutForm animalId={animalId} capacity={capacity} editing={editing} onDone={closeForm} />
       )}
 
@@ -139,7 +141,7 @@ export function TurnoutManager({
                 <th className="px-3 py-2 font-medium">Route</th>
                 <th className="px-3 py-2 font-medium">Time</th>
                 <th className="px-3 py-2 font-medium">Days</th>
-                <th className="px-3 py-2 font-medium text-right">Actions</th>
+                {!readOnly && <th className="px-3 py-2 font-medium text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -158,22 +160,24 @@ export function TurnoutManager({
                     {ev.startTime} – {ev.endTime}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{daysLabel(ev.repeatDays)}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(ev)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        title="Cancel turnout"
-                        onClick={() => del.mutate({ id: ev.id })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(ev)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          title="Cancel turnout"
+                          onClick={() => del.mutate({ id: ev.id })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

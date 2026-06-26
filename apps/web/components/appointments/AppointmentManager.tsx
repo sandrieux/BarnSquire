@@ -31,7 +31,15 @@ function toLocalInput(d: Date | string) {
   return new Date(date.getTime() - off * 60000).toISOString().slice(0, 16);
 }
 
-export function AppointmentManager({ barnId, animalId }: { barnId: string; animalId: string }) {
+export function AppointmentManager({
+  barnId,
+  animalId,
+  readOnly = false,
+}: {
+  barnId: string;
+  animalId: string;
+  readOnly?: boolean;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Appointment | null>(null);
 
@@ -62,7 +70,7 @@ export function AppointmentManager({ barnId, animalId }: { barnId: string; anima
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Appointments</h2>
-        {!showForm && (
+        {!showForm && !readOnly && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Schedule
@@ -70,7 +78,7 @@ export function AppointmentManager({ barnId, animalId }: { barnId: string; anima
         )}
       </div>
 
-      {showForm && (
+      {showForm && !readOnly && (
         <AppointmentForm barnId={barnId} animalId={animalId} editing={editing} onDone={closeForm} />
       )}
 
@@ -89,7 +97,7 @@ export function AppointmentManager({ barnId, animalId }: { barnId: string; anima
                 <th className="px-3 py-2 font-medium">Title</th>
                 <th className="px-3 py-2 font-medium">When</th>
                 <th className="px-3 py-2 font-medium">Provider</th>
-                <th className="px-3 py-2 font-medium text-right">Actions</th>
+                {!readOnly && <th className="px-3 py-2 font-medium text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -123,33 +131,35 @@ export function AppointmentManager({ barnId, animalId }: { barnId: string; anima
                       </>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1 justify-end">
-                      {!appt.isCompleted && (
+                  {!readOnly && (
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1 justify-end">
+                        {!appt.isCompleted && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-600"
+                            title="Mark complete"
+                            onClick={() => complete.mutate({ id: appt.id })}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(appt)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-green-600"
-                          title="Mark complete"
-                          onClick={() => complete.mutate({ id: appt.id })}
+                          className="h-8 w-8 text-destructive"
+                          title="Delete"
+                          onClick={() => del.mutate({ id: appt.id })}
                         >
-                          <Check className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(appt)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        title="Delete"
-                        onClick={() => del.mutate({ id: appt.id })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -157,7 +167,7 @@ export function AppointmentManager({ barnId, animalId }: { barnId: string; anima
         </div>
       )}
 
-      <ReminderSection barnId={barnId} animalId={animalId} />
+      {!readOnly && <ReminderSection barnId={barnId} animalId={animalId} />}
     </div>
   );
 }
