@@ -53,6 +53,17 @@
       "close": "Close"
     }
   },
+  "owner": {
+    "myAnimals": "My animals",
+    "noAnimals": "You don't have any animals yet."
+  },
+  "foodPrep": {
+    "title": "Food prep",
+    "animal": "Animal",
+    "med": "Med",
+    "print": "Print",
+    "printSheetTitle": "Food prep sheet"
+  },
   "settings": {
     "title": "Barn settings",
     "details": "Details",

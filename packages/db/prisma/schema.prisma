@@ -27,6 +27,7 @@ model User {
   auditLogs       AuditLog[]
   taskCompletions TaskCompletion[]
   ledgerEntries   LedgerEntry[]
+  ownedAnimals    AnimalOwner[]
 }
 
 model Account {
@@ -198,6 +199,22 @@ model Animal {
   exerciseSchedules ExerciseSchedule[]
   taskCompletions TaskCompletion[]
   ledgerEntries   LedgerEntry[]
+  owners          AnimalOwner[]
+}
+
+// Links a (read-only) owner user to a specific animal. Owners are not barn
+// staff — this animal-scoped link is the only thing granting them read access.
+model AnimalOwner {
+  id        String   @id @default(cuid())
+  userId    String
+  animalId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animalId])
+  @@index([animalId])
 }
 
 model MediaFile {

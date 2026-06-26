@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { getPresignedUploadUrl, getPresignedViewUrl, deleteObject } from "../storage";
+import { assertAnimalReadAccess } from "../access";
 
 async function assertAnimalBarnAccess(
   db: import("@barnsquire/db").PrismaClient,
@@ -45,7 +46,7 @@ export const ledgerRouter = router({
   getEntries: protectedProcedure
     .input(z.object({ animalId: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
-      await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId, "CARETAKER");
+      await assertAnimalReadAccess(ctx.db, ctx.session.user.id, input.animalId);
 
       const [entries, completions] = await Promise.all([
         ctx.db.ledgerEntry.findMany({

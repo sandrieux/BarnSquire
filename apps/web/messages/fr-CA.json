@@ -53,6 +53,17 @@
       "close": "Fermer"
     }
   },
+  "owner": {
+    "myAnimals": "Mes animaux",
+    "noAnimals": "Vous n'avez aucun animal pour l'instant."
+  },
+  "foodPrep": {
+    "title": "Préparation des aliments",
+    "animal": "Animal",
+    "med": "Méd",
+    "print": "Imprimer",
+    "printSheetTitle": "Feuille de préparation des aliments"
+  },
   "settings": {
     "title": "Paramètres de l'écurie",
     "details": "Détails",

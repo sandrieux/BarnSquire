@@ -1,8 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { router, protectedProcedure } from "../trpc";
 import { createAnimalSchema, updateAnimalSchema, setHomeLocationSchema } from "@barnsquire/validators";
 import { getPresignedViewUrl } from "../storage";
+import { assertAnimalReadAccess } from "../access";
 
 async function assertBarnAccess(
   db: import("@barnsquire/db").PrismaClient,
@@ -109,7 +111,8 @@ export const animalRouter = router({
         },
       });
       if (!animal) throw new TRPCError({ code: "NOT_FOUND" });
-      await assertBarnAccess(ctx.db, ctx.session.user.id, animal.barnId, "CARETAKER");
+      // Staff (CARETAKER+) or a read-only owner of this animal.
+      await assertAnimalReadAccess(ctx.db, ctx.session.user.id, animal.id);
       const profilePhoto = animal.profilePhotoId
         ? animal.mediaFiles.find((m) => m.id === animal.profilePhotoId)
         : undefined;
@@ -180,5 +183,73 @@ export const animalRouter = router({
         where: { id: input.animalId },
         data: { profilePhotoId: input.mediaFileId },
       });
+    }),
+
+  // ─── Owners (read-only viewers assigned to a specific animal) ───────────────
+
+  listOwners: protectedProcedure
+    .input(z.object({ animalId: z.string().cuid() }))
+    .query(async ({ ctx, input }) => {
+      const animal = await ctx.db.animal.findUnique({ where: { id: input.animalId } });
+      if (!animal) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertBarnAccess(ctx.db, ctx.session.user.id, animal.barnId, "BARN_MANAGER");
+      const owners = await ctx.db.animalOwner.findMany({
+        where: { animalId: input.animalId },
+        include: { user: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: "asc" },
+      });
+      return owners.map((o) => o.user);
+    }),
+
+  addOwner: protectedProcedure
+    .input(
+      z.object({
+        animalId: z.string().cuid(),
+        email: z.string().email(),
+        name: z.string().min(1).max(100).optional(),
+        tempPassword: z.string().min(8).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const animal = await ctx.db.animal.findUnique({ where: { id: input.animalId } });
+      if (!animal) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertBarnAccess(ctx.db, ctx.session.user.id, animal.barnId, "BARN_MANAGER");
+
+      let user = await ctx.db.user.findUnique({ where: { email: input.email } });
+      if (!user) {
+        if (!input.name || !input.tempPassword) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "New owner needs a name and a temporary password",
+          });
+        }
+        user = await ctx.db.user.create({
+          data: {
+            name: input.name,
+            email: input.email,
+            passwordHash: await bcrypt.hash(input.tempPassword, 12),
+            mustChangePassword: true,
+          },
+        });
+      }
+
+      await ctx.db.animalOwner.upsert({
+        where: { userId_animalId: { userId: user.id, animalId: input.animalId } },
+        create: { userId: user.id, animalId: input.animalId },
+        update: {},
+      });
+      return { id: user.id, name: user.name, email: user.email };
+    }),
+
+  removeOwner: protectedProcedure
+    .input(z.object({ animalId: z.string().cuid(), userId: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const animal = await ctx.db.animal.findUnique({ where: { id: input.animalId } });
+      if (!animal) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertBarnAccess(ctx.db, ctx.session.user.id, animal.barnId, "BARN_MANAGER");
+      await ctx.db.animalOwner.deleteMany({
+        where: { animalId: input.animalId, userId: input.userId },
+      });
+      return { ok: true };
     }),
 });

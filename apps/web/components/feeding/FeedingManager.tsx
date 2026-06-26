@@ -32,7 +32,15 @@ const WEEKDAYS = [
   { value: 7, label: "Sun" },
 ];
 
-export function FeedingManager({ animalId, barnId }: { animalId: string; barnId: string }) {
+export function FeedingManager({
+  animalId,
+  barnId,
+  readOnly = false,
+}: {
+  animalId: string;
+  barnId: string;
+  readOnly?: boolean;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
 
@@ -57,7 +65,7 @@ export function FeedingManager({ animalId, barnId }: { animalId: string; barnId:
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Feeding & medication</h2>
-        {!showForm && (
+        {!showForm && !readOnly && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add schedule
@@ -65,7 +73,7 @@ export function FeedingManager({ animalId, barnId }: { animalId: string; barnId:
         )}
       </div>
 
-      {showForm && (
+      {showForm && !readOnly && (
         <FeedingForm
           animalId={animalId}
           barnId={barnId}
@@ -89,7 +97,7 @@ export function FeedingManager({ animalId, barnId }: { animalId: string; barnId:
                 <th className="px-3 py-2 font-medium">Item</th>
                 <th className="px-3 py-2 font-medium">Quantity</th>
                 <th className="px-3 py-2 font-medium">Schedule</th>
-                <th className="px-3 py-2 font-medium text-right">Actions</th>
+                {!readOnly && <th className="px-3 py-2 font-medium text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -130,22 +138,24 @@ export function FeedingManager({ animalId, barnId }: { animalId: string; barnId:
                       from {formatDate(schedule.startDate)}
                       {schedule.endDate ? ` until ${formatDate(schedule.endDate)}` : ""}
                     </td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(schedule)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          title="End schedule"
-                          onClick={() => deactivate.mutate({ id: schedule.id })}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+                    {!readOnly && (
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(schedule)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            title="End schedule"
+                            onClick={() => deactivate.mutate({ id: schedule.id })}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
             </tbody>
