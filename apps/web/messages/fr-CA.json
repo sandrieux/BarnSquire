@@ -53,6 +53,10 @@
       "close": "Fermer"
     }
   },
+  "owner": {
+    "myAnimals": "Mes animaux",
+    "noAnimals": "Vous n'avez aucun animal pour l'instant."
+  },
   "foodPrep": {
     "title": "Préparation des aliments",
     "animal": "Animal",

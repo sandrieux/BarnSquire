@@ -24,10 +24,12 @@ export function AnimalTabs({
   barnId,
   animalId,
   capacity,
+  readOnly = false,
 }: {
   barnId: string;
   animalId: string;
   capacity: Capacity;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -68,16 +70,17 @@ export function AnimalTabs({
       </div>
 
       <div>
-        {active === "Feeding" && <FeedingManager animalId={animalId} barnId={barnId} />}
-        {active === "Appointments" && <AppointmentManager barnId={barnId} animalId={animalId} />}
-        {active === "Turnout" && <TurnoutManager animalId={animalId} capacity={capacity} />}
+        {active === "Feeding" && <FeedingManager animalId={animalId} barnId={barnId} readOnly={readOnly} />}
+        {active === "Appointments" && <AppointmentManager barnId={barnId} animalId={animalId} readOnly={readOnly} />}
+        {active === "Turnout" && <TurnoutManager animalId={animalId} capacity={capacity} readOnly={readOnly} />}
         {active === "Exercise" && (
           <ExerciseManager
             animalId={animalId}
             locations={{ pastures: capacity.pastures, arenas: capacity.arenas }}
+            readOnly={readOnly}
           />
         )}
-        {active === "Ledger" && <LedgerManager animalId={animalId} />}
+        {active === "Ledger" && <LedgerManager animalId={animalId} readOnly={readOnly} />}
       </div>
     </div>
   );

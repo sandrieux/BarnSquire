@@ -53,6 +53,10 @@
       "close": "Close"
     }
   },
+  "owner": {
+    "myAnimals": "My animals",
+    "noAnimals": "You don't have any animals yet."
+  },
   "foodPrep": {
     "title": "Food prep",
     "animal": "Animal",
