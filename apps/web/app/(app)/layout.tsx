@@ -26,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col overflow-hidden">
           <TopNav
             userName={session.user?.name}
+            userEmail={session.user?.email}
             barns={barns}
             currentBarnId={barns[0]?.id}
           />
