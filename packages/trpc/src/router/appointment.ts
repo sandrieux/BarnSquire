@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { createAppointmentSchema, updateAppointmentSchema, createReminderSchema } from "@barnsquire/validators";
+import { assertAnimalReadAccess } from "../access";
 
 async function assertBarnAccess(
   db: import("@barnsquire/db").PrismaClient,
@@ -27,7 +28,12 @@ export const appointmentRouter = router({
       upcoming: z.boolean().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "CARETAKER");
+      // Per-animal listing is owner-readable; the barn-wide listing is staff-only.
+      if (input.animalId) {
+        await assertAnimalReadAccess(ctx.db, ctx.session.user.id, input.animalId);
+      } else {
+        await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "CARETAKER");
+      }
       return ctx.db.appointment.findMany({
         where: {
           barnId: input.barnId,

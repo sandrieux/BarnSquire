@@ -131,6 +131,11 @@ export const todayRouter = router({
           label: string;
           detail: string;
           slot: Slot;
+          // Structured feed fields (feeding/medication tasks only) for the prep matrix.
+          feedType?: string;
+          quantity?: string;
+          unit?: string | null;
+          instructions?: string | null;
           completion: typeof completions[number] | undefined;
         }>;
       };
@@ -167,6 +172,10 @@ export const todayRouter = router({
           label: `${feeding.slot}: ${feeding.feedType}`,
           detail: `${feeding.quantity}${feeding.unit ? " " + feeding.unit : ""}${feeding.instructions ? " — " + feeding.instructions : ""}`,
           slot: feeding.slot === "CUSTOM" ? timeToSlot(feeding.customTime ?? "00:00") : (feeding.slot as Slot),
+          feedType: feeding.feedType,
+          quantity: feeding.quantity,
+          unit: feeding.unit,
+          instructions: feeding.instructions,
           completion: completionMap.get(feeding.id),
         });
       }

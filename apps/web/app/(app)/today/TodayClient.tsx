@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn, formatDate } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
+import { FeedPrepTable } from "@/components/today/FeedPrepTable";
 
 type Group = RouterOutputs["today"]["getDailyView"][number];
 type Task = Group["tasks"][number];
@@ -38,6 +39,17 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
 const SLOTS = ["ALL", "MORNING", "LUNCH", "AFTERNOON", "EVENING"] as const;
 type SlotFilter = (typeof SLOTS)[number];
 
+// Current time-of-day slot from the browser clock — mirrors the server's
+// timeToSlot windows (Morning 06–12, Lunch 12–13, Afternoon 13–18, else Evening).
+function currentSlot(): SlotFilter {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  if (mins >= 360 && mins < 720) return "MORNING";
+  if (mins >= 720 && mins < 780) return "LUNCH";
+  if (mins >= 780 && mins < 1080) return "AFTERNOON";
+  return "EVENING";
+}
+
 export function TodayClient({
   barnId,
   barns,
@@ -52,6 +64,17 @@ export function TodayClient({
   const locale = useLocale();
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
+
+  // On load, default the filter to the current time-of-day slot (browser time)
+  // when viewing today, so caretakers land on what's due now. Computed client-side
+  // post-mount to avoid an SSR/browser-timezone hydration mismatch.
+  useEffect(() => {
+    if (date === new Date().toISOString().slice(0, 10)) {
+      setSlotFilter(currentSlot());
+    }
+    // Mount only: don't override the user's manual choice on later re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [detail, setDetail] = useState<{ task: Task; location: string } | null>(null);
 
   const utils = trpc.useUtils();
@@ -198,6 +221,14 @@ export function TodayClient({
           </Button>
         ))}
       </div>
+
+      {/* Food prep matrix */}
+      <FeedPrepTable
+        groups={groups}
+        slotFilter={slotFilter}
+        barnName={barns.find((b) => b.id === barnId)?.name ?? ""}
+        date={date}
+      />
 
       {/* Location groups */}
       {filteredGroups.length === 0 ? (

@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { createFeedingScheduleSchema, updateFeedingScheduleSchema } from "@barnsquire/validators";
+import { assertAnimalReadAccess } from "../access";
 
 async function assertAnimalAccess(
   db: import("@barnsquire/db").PrismaClient,
@@ -45,7 +46,7 @@ export const feedingRouter = router({
   list: protectedProcedure
     .input(z.object({ animalId: z.string().cuid(), activeOnly: z.boolean().default(true) }))
     .query(async ({ ctx, input }) => {
-      await assertAnimalAccess(ctx.db, ctx.session.user.id, input.animalId, "CARETAKER");
+      await assertAnimalReadAccess(ctx.db, ctx.session.user.id, input.animalId);
       return ctx.db.feedingSchedule.findMany({
         where: { animalId: input.animalId, isActive: input.activeOnly ? true : undefined },
         orderBy: [{ slot: "asc" }, { feedType: "asc" }],

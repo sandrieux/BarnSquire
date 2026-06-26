@@ -70,9 +70,11 @@ function daysLabel(days: number[]) {
 export function ExerciseManager({
   animalId,
   locations,
+  readOnly = false,
 }: {
   animalId: string;
   locations: LocationOptions;
+  readOnly?: boolean;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Exercise | null>(null);
@@ -96,7 +98,7 @@ export function ExerciseManager({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Exercise</h2>
-        {!showForm && (
+        {!showForm && !readOnly && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add exercise
@@ -104,7 +106,7 @@ export function ExerciseManager({
         )}
       </div>
 
-      {showForm && (
+      {showForm && !readOnly && (
         <ExerciseForm animalId={animalId} locations={locations} editing={editing} onDone={closeForm} />
       )}
 
@@ -124,7 +126,7 @@ export function ExerciseManager({
                 <th className="px-3 py-2 font-medium">Location</th>
                 <th className="px-3 py-2 font-medium">Trainer</th>
                 <th className="px-3 py-2 font-medium">Days</th>
-                <th className="px-3 py-2 font-medium text-right">Actions</th>
+                {!readOnly && <th className="px-3 py-2 font-medium text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -146,22 +148,24 @@ export function ExerciseManager({
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{ex.trainer ?? "—"}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{daysLabel(ex.repeatDays)}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(ex)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        title="Remove exercise"
-                        onClick={() => deactivate.mutate({ id: ex.id })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => startEdit(ex)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          title="Remove exercise"
+                          onClick={() => deactivate.mutate({ id: ex.id })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

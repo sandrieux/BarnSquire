@@ -8,6 +8,7 @@ import { turnoutRouter } from "./turnout";
 import { exerciseRouter } from "./exercise";
 import { scheduledEventRouter } from "./scheduledEvent";
 import { feedStockRouter } from "./feedStock";
+import { ownerRouter } from "./owner";
 import { todayRouter } from "./today";
 import { mediaRouter } from "./media";
 import { ledgerRouter } from "./ledger";
@@ -25,6 +26,7 @@ export const appRouter = router({
   exercise: exerciseRouter,
   scheduledEvent: scheduledEventRouter,
   feedStock: feedStockRouter,
+  owner: ownerRouter,
   today: todayRouter,
   media: mediaRouter,
   ledger: ledgerRouter,
