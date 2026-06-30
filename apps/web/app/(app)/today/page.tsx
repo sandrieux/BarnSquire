@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { createServerCaller } from "@/lib/trpc/server";
+import { todayInTimeZone } from "@/lib/utils";
 import { TodayClient } from "./TodayClient";
 
 export default async function TodayPage({
@@ -26,7 +27,9 @@ export default async function TodayPage({
   }
 
   const barnId = params.barnId ?? barns[0]!.id;
-  const date = params.date ?? new Date().toISOString().slice(0, 10);
+  const barn = barns.find((b: { id: string }) => b.id === barnId);
+  const barnTimeZone = barn?.timezone ?? "UTC";
+  const date = params.date ?? todayInTimeZone(barnTimeZone);
 
-  return <TodayClient barnId={barnId} barns={barns} date={date} />;
+  return <TodayClient barnId={barnId} barns={barns} date={date} barnTimeZone={barnTimeZone} />;
 }

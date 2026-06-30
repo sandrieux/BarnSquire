@@ -10,7 +10,7 @@ import type { RouterOutputs } from "@/lib/trpc/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, todayInTimeZone, addDays, hourMinuteInTimeZone } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
 import { FeedPrepTable } from "@/components/today/FeedPrepTable";
 
@@ -39,11 +39,11 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
 const SLOTS = ["ALL", "MORNING", "LUNCH", "AFTERNOON", "EVENING"] as const;
 type SlotFilter = (typeof SLOTS)[number];
 
-// Current time-of-day slot from the browser clock — mirrors the server's
+// Current time-of-day slot in the barn's timezone — mirrors the server's
 // timeToSlot windows (Morning 06–12, Lunch 12–13, Afternoon 13–18, else Evening).
-function currentSlot(): SlotFilter {
-  const now = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
+function currentSlot(timeZone: string): SlotFilter {
+  const { hour, minute } = hourMinuteInTimeZone(timeZone);
+  const mins = hour * 60 + minute;
   if (mins >= 360 && mins < 720) return "MORNING";
   if (mins >= 720 && mins < 780) return "LUNCH";
   if (mins >= 780 && mins < 1080) return "AFTERNOON";
@@ -54,10 +54,12 @@ export function TodayClient({
   barnId,
   barns,
   date,
+  barnTimeZone,
 }: {
   barnId: string;
   barns: Array<{ id: string; name: string }>;
   date: string;
+  barnTimeZone: string;
 }) {
   const router = useRouter();
   const t = useTranslations("today");
@@ -69,8 +71,8 @@ export function TodayClient({
   // when viewing today, so caretakers land on what's due now. Computed client-side
   // post-mount to avoid an SSR/browser-timezone hydration mismatch.
   useEffect(() => {
-    if (date === new Date().toISOString().slice(0, 10)) {
-      setSlotFilter(currentSlot());
+    if (date === todayInTimeZone(barnTimeZone)) {
+      setSlotFilter(currentSlot(barnTimeZone));
     }
     // Mount only: don't override the user's manual choice on later re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,9 +98,7 @@ export function TodayClient({
   const { data: refillsDue = [] } = trpc.feedStock.getRefillsDue.useQuery({ barnId });
 
   function navigateDate(delta: number) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + delta);
-    router.push(`/today?barnId=${barnId}&date=${d.toISOString().slice(0, 10)}`);
+    router.push(`/today?barnId=${barnId}&date=${addDays(date, delta)}`);
   }
 
   function handleComplete(task: Task) {
@@ -115,7 +115,7 @@ export function TodayClient({
     });
   }
 
-  const isToday = date === new Date().toISOString().slice(0, 10);
+  const isToday = date === todayInTimeZone(barnTimeZone);
 
   const filteredGroups = groups.map((group) => ({
     ...group,
