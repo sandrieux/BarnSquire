@@ -1,0 +1,102 @@
+{
+  "nav": {
+    "today": "Aujourd'hui",
+    "animals": "Animaux",
+    "locations": "Emplacements",
+    "schedule": "Horaire",
+    "stock": "Stock",
+    "settings": "Paramètres",
+    "admin": "Admin",
+    "barnSection": "Écurie"
+  },
+  "topnav": {
+    "changePassword": "Changer le mot de passe",
+    "signOut": "Déconnexion"
+  },
+  "language": {
+    "label": "Langue",
+    "en": "English",
+    "fr-CA": "Français (Canada)",
+    "fr-FR": "Français (France)"
+  },
+  "today": {
+    "title": "Aujourd'hui",
+    "tasksCompleted": "{done}/{total} tâches complétées",
+    "remindersDue": "{count, plural, one {# rappel dû} other {# rappels dus}}",
+    "snooze": "Reporter",
+    "feedsLow": "{count, plural, one {# aliment en réserve faible} other {# aliments en réserve faible}}",
+    "feedDaysLeft": "~{days} j d'aliment restant",
+    "addStock": "Ajouter au stock",
+    "noTasks": "Aucune tâche pour cette journée.",
+    "viewDetails": "Voir les détails",
+    "skipped": "Ignoré",
+    "slots": { "ALL": "Tout", "MORNING": "Matin", "LUNCH": "Midi", "AFTERNOON": "Après-midi", "EVENING": "Soir" },
+    "locationTypes": { "stall": "Stalle", "pasture": "Pâturage", "barn": "Écurie", "unassigned": "Aucun emplacement" },
+    "taskTypes": {
+      "FEEDING": "Alimentation",
+      "MEDICATION": "Médication",
+      "APPOINTMENT": "Rendez-vous",
+      "TURNOUT": "Sortie au pré",
+      "EXERCISE": "Exercice",
+      "SCHEDULED_EVENT": "Événement planifié"
+    },
+    "detail": {
+      "task": "Tâche",
+      "details": "Détails",
+      "location": "Emplacement",
+      "status": "Statut",
+      "notes": "Notes",
+      "completed": "Complété {datetime}",
+      "skipped": "Ignoré",
+      "notDone": "Pas encore fait",
+      "view": "Voir {name}",
+      "close": "Fermer"
+    }
+  },
+  "owner": {
+    "myAnimals": "Mes animaux",
+    "noAnimals": "Vous n'avez aucun animal pour l'instant."
+  },
+  "foodPrep": {
+    "title": "Préparation des aliments",
+    "animal": "Animal",
+    "med": "Méd",
+    "print": "Imprimer",
+    "printSheetTitle": "Feuille de préparation des aliments"
+  },
+  "settings": {
+    "title": "Paramètres de l'écurie",
+    "details": "Détails",
+    "name": "Nom",
+    "address": "Adresse",
+    "timezone": "Fuseau horaire",
+    "teamMembers": "Membres de l'équipe",
+    "inviteMember": "Inviter un membre",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signingIn": "Connexion…",
+    "email": "Courriel",
+    "password": "Mot de passe",
+    "invalidCredentials": "Courriel ou mot de passe invalide",
+    "createAccount": "Créer un compte",
+    "creatingAccount": "Création du compte…",
+    "fullName": "Nom complet",
+    "minChars": "8 caractères minimum",
+    "confirmPassword": "Confirmer le mot de passe",
+    "repeatPassword": "Répéter le mot de passe",
+    "passwordsNoMatch": "Les mots de passe ne correspondent pas",
+    "registrationFailed": "Échec de l'inscription",
+    "newPassword": "Nouveau mot de passe",
+    "confirmNewPassword": "Confirmer le nouveau mot de passe",
+    "setPassword": "Définir le mot de passe",
+    "saving": "Enregistrement…",
+    "passwordTooShort": "Le mot de passe doit comporter au moins 8 caractères",
+    "passwordUpdated": "Mot de passe mis à jour. Redirection vers la connexion…",
+    "setNewPasswordTitle": "Définir un nouveau mot de passe",
+    "setNewPasswordDesc": "Choisissez un nouveau mot de passe pour terminer la configuration de votre compte."
+  }
+}
