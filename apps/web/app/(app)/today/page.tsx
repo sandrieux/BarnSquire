@@ -4,6 +4,11 @@ import { createServerCaller } from "@/lib/trpc/server";
 import { todayInTimeZone } from "@/lib/utils";
 import { TodayClient } from "./TodayClient";
 
+// The resolved "today" must reflect the live server clock on every request —
+// never a cached/prerendered render (which is why it could get stuck a day behind).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function TodayPage({
   searchParams,
 }: {
