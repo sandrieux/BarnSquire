@@ -71,7 +71,10 @@
     "address": "Adresse",
     "timezone": "Fuseau horaire",
     "teamMembers": "Membres de l'équipe",
-    "inviteMember": "Inviter un membre"
+    "inviteMember": "Inviter un membre",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré"
   },
   "auth": {
     "signIn": "Se connecter",
