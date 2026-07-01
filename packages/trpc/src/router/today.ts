@@ -357,6 +357,34 @@ export const todayRouter = router({
       });
     }),
 
+  // Undo a completion/skip for a task on a given date (clears the ledger row so
+  // the task shows as not-done again). deleteMany is a no-op if nothing exists.
+  uncompleteTask: protectedProcedure
+    .input(z.object({
+      barnId: z.string().cuid(),
+      date: z.string().date(),
+      feedingScheduleId: z.string().cuid().optional(),
+      appointmentId: z.string().cuid().optional(),
+      turnoutEventId: z.string().cuid().optional(),
+      exerciseScheduleId: z.string().cuid().optional(),
+      scheduledEventId: z.string().cuid().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
+      const scheduledDate = new Date(input.date);
+      await ctx.db.taskCompletion.deleteMany({
+        where: {
+          scheduledDate,
+          feedingScheduleId: input.feedingScheduleId,
+          appointmentId: input.appointmentId,
+          turnoutEventId: input.turnoutEventId,
+          exerciseScheduleId: input.exerciseScheduleId,
+          scheduledEventId: input.scheduledEventId,
+        },
+      });
+      return { ok: true };
+    }),
+
   getCompletionHistory: protectedProcedure
     .input(z.object({
       barnId: z.string().cuid(),
