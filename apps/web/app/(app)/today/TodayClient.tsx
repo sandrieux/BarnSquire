@@ -53,12 +53,14 @@ function currentSlot(timeZone: string): SlotFilter {
 export function TodayClient({
   barnId,
   barns,
-  date,
+  initialDate,
+  explicit,
   barnTimeZone,
 }: {
   barnId: string;
   barns: Array<{ id: string; name: string }>;
-  date: string;
+  initialDate: string;
+  explicit: boolean;
   barnTimeZone: string;
 }) {
   const router = useRouter();
@@ -67,13 +69,18 @@ export function TodayClient({
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
 
-  // On load, default the filter to the current time-of-day slot (browser time)
-  // when viewing today, so caretakers land on what's due now. Computed client-side
-  // post-mount to avoid an SSR/browser-timezone hydration mismatch.
+  // The active date. For an explicit date (?date=…) we follow the URL; for the
+  // default view we pin to the *live* barn-zone day, computed on the client, so
+  // it stays correct even if the server render is stale or served from Next's
+  // router cache (e.g. the page was rendered before midnight).
+  const [date, setDate] = useState(initialDate);
   useEffect(() => {
-    if (date === todayInTimeZone(barnTimeZone)) {
-      setSlotFilter(currentSlot(barnTimeZone));
-    }
+    setDate(explicit ? initialDate : todayInTimeZone(barnTimeZone));
+  }, [initialDate, explicit, barnTimeZone]);
+
+  // On load of the default (today) view, preselect the current time-of-day slot.
+  useEffect(() => {
+    if (!explicit) setSlotFilter(currentSlot(barnTimeZone));
     // Mount only: don't override the user's manual choice on later re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

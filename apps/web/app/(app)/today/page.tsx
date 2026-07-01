@@ -29,7 +29,16 @@ export default async function TodayPage({
   const barnId = params.barnId ?? barns[0]!.id;
   const barn = barns.find((b: { id: string }) => b.id === barnId);
   const barnTimeZone = barn?.timezone ?? "UTC";
-  const date = params.date ?? todayInTimeZone(barnTimeZone);
+  const explicit = !!params.date;
+  const initialDate = params.date ?? todayInTimeZone(barnTimeZone);
 
-  return <TodayClient barnId={barnId} barns={barns} date={date} barnTimeZone={barnTimeZone} />;
+  return (
+    <TodayClient
+      barnId={barnId}
+      barns={barns}
+      initialDate={initialDate}
+      explicit={explicit}
+      barnTimeZone={barnTimeZone}
+    />
+  );
 }
