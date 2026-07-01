@@ -10,7 +10,7 @@ import type { RouterOutputs } from "@/lib/trpc/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn, formatDate, todayInTimeZone, addDays, hourMinuteInTimeZone } from "@/lib/utils";
+import { cn, formatDate, addDays, hourMinuteInTimeZone } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
 import { FeedPrepTable } from "@/components/today/FeedPrepTable";
 
@@ -53,14 +53,14 @@ function currentSlot(timeZone: string): SlotFilter {
 export function TodayClient({
   barnId,
   barns,
-  initialDate,
-  explicit,
+  date,
+  isToday,
   barnTimeZone,
 }: {
   barnId: string;
   barns: Array<{ id: string; name: string }>;
-  initialDate: string;
-  explicit: boolean;
+  date: string;
+  isToday: boolean;
   barnTimeZone: string;
 }) {
   const router = useRouter();
@@ -69,18 +69,11 @@ export function TodayClient({
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
 
-  // The active date. For an explicit date (?date=…) we follow the URL; for the
-  // default view we pin to the *live* barn-zone day, computed on the client, so
-  // it stays correct even if the server render is stale or served from Next's
-  // router cache (e.g. the page was rendered before midnight).
-  const [date, setDate] = useState(initialDate);
+  // `date` and `isToday` are computed server-side from the barn's timezone using
+  // the (NTP-synced) server clock — the reliable source. On the today view,
+  // preselect the current time-of-day slot from the barn clock.
   useEffect(() => {
-    setDate(explicit ? initialDate : todayInTimeZone(barnTimeZone));
-  }, [initialDate, explicit, barnTimeZone]);
-
-  // On load of the default (today) view, preselect the current time-of-day slot.
-  useEffect(() => {
-    if (!explicit) setSlotFilter(currentSlot(barnTimeZone));
+    if (isToday) setSlotFilter(currentSlot(barnTimeZone));
     // Mount only: don't override the user's manual choice on later re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -121,8 +114,6 @@ export function TodayClient({
       scheduledEventId: task.taskType === "SCHEDULED_EVENT" ? task.id : undefined,
     });
   }
-
-  const isToday = date === todayInTimeZone(barnTimeZone);
 
   const filteredGroups = groups.map((group) => ({
     ...group,

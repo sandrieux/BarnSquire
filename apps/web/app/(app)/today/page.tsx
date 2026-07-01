@@ -29,15 +29,18 @@ export default async function TodayPage({
   const barnId = params.barnId ?? barns[0]!.id;
   const barn = barns.find((b: { id: string }) => b.id === barnId);
   const barnTimeZone = barn?.timezone ?? "UTC";
-  const explicit = !!params.date;
-  const initialDate = params.date ?? todayInTimeZone(barnTimeZone);
+  // "Today" is resolved entirely server-side from the barn's timezone using the
+  // (NTP-synced) server clock — the reliable source, independent of client clocks.
+  const todayStr = todayInTimeZone(barnTimeZone);
+  const date = params.date ?? todayStr;
+  const isToday = date === todayStr;
 
   return (
     <TodayClient
       barnId={barnId}
       barns={barns}
-      initialDate={initialDate}
-      explicit={explicit}
+      date={date}
+      isToday={isToday}
       barnTimeZone={barnTimeZone}
     />
   );
