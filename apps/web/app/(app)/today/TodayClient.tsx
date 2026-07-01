@@ -142,7 +142,14 @@ export function TodayClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {isToday ? t("title") : formatDate(date, locale)}
+            {isToday ? (
+              <>
+                {t("title")}{" "}
+                <span className="text-muted-foreground font-normal">· {formatDate(date, locale)}</span>
+              </>
+            ) : (
+              formatDate(date, locale)
+            )}
           </h1>
           <p className="text-muted-foreground text-sm">
             {t("tasksCompleted", { done: doneTasks, total: totalTasks })}
