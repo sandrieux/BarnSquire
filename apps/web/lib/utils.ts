@@ -5,8 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Parse an input for display. A plain "YYYY-MM-DD" string is a *calendar day*
+// with no time/zone — parse it as local midnight so it renders as that same day
+// in any timezone. `new Date("YYYY-MM-DD")` would instead parse as UTC midnight
+// and shift a day back in western zones (the gotcha in CLAUDE.md). Full Date
+// objects / ISO instants keep their real point in time (rendered in local zone).
+function toDisplayDate(date: Date | string): Date {
+  if (typeof date === "string") {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+  return new Date(date);
+}
+
 export function formatDate(date: Date | string, locale = "en-US") {
-  return new Date(date).toLocaleDateString(locale, {
+  return toDisplayDate(date).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
