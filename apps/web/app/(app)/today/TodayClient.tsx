@@ -10,7 +10,7 @@ import type { RouterOutputs } from "@/lib/trpc/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn, formatDate, addDays, hourMinuteInTimeZone } from "@/lib/utils";
+import { cn, formatDate, addDays, hourMinuteInTimeZone, todayInTimeZone } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
 import { FeedPrepTable } from "@/components/today/FeedPrepTable";
 
@@ -53,14 +53,14 @@ function currentSlot(timeZone: string): SlotFilter {
 export function TodayClient({
   barnId,
   barns,
-  date,
-  isToday,
+  serverDate,
+  explicit,
   barnTimeZone,
 }: {
   barnId: string;
   barns: Array<{ id: string; name: string }>;
-  date: string;
-  isToday: boolean;
+  serverDate: string;
+  explicit: boolean;
   barnTimeZone: string;
 }) {
   const router = useRouter();
@@ -69,15 +69,24 @@ export function TodayClient({
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
 
-  // `date` and `isToday` are computed server-side from the barn's timezone using
-  // the (NTP-synced) server clock — the reliable source. On the today view,
-  // preselect the current time-of-day slot from the barn clock.
+  // For an explicit ?date= we follow the URL; for the default view we re-derive
+  // "today" from the live browser clock (barn timezone) so it can never be stuck
+  // on a stale/cached server render. JS is always running here, so this corrects
+  // the SSR value on mount.
+  const [date, setDate] = useState(serverDate);
   useEffect(() => {
-    if (isToday) setSlotFilter(currentSlot(barnTimeZone));
+    setDate(explicit ? serverDate : todayInTimeZone(barnTimeZone));
+  }, [serverDate, explicit, barnTimeZone]);
+
+  // On load of the default (today) view, preselect the current time-of-day slot.
+  useEffect(() => {
+    if (!explicit) setSlotFilter(currentSlot(barnTimeZone));
     // Mount only: don't override the user's manual choice on later re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [detail, setDetail] = useState<{ task: Task; location: string } | null>(null);
+
+  const isToday = date === todayInTimeZone(barnTimeZone);
 
   const utils = trpc.useUtils();
   const { data: groups = [] } = trpc.today.getDailyView.useQuery({ barnId, date });
