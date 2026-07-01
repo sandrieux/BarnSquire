@@ -71,7 +71,10 @@
     "address": "Address",
     "timezone": "Timezone",
     "teamMembers": "Team members",
-    "inviteMember": "Invite member"
+    "inviteMember": "Invite member",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Saved"
   },
   "auth": {
     "signIn": "Sign in",
