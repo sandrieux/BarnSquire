@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Screen } from "../../components/Screen";
 import { BarnSwitcher } from "../../components/BarnSwitcher";
+import { AccountMenu } from "../../components/AccountMenu";
 import { Badge, Card, EmptyState, ErrorNote, Loading } from "../../components/ui";
 import { useBarn } from "../../lib/barn";
 import { trpc } from "../../lib/trpc";
@@ -145,6 +146,7 @@ export default function TodayScreen() {
       subtitle={formatDate(date, locale)}
       right={
         <View style={styles.headerRight}>
+          <AccountMenu />
           <Pressable onPress={() => router.push("/scan")} hitSlop={8}>
             <Ionicons name="qr-code-outline" size={22} color={colors.text} />
           </Pressable>

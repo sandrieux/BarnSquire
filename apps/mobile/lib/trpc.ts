@@ -1,7 +1,7 @@
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@barnsquire/trpc/client";
-import { TRPC_URL } from "./config";
+import { getTrpcUrl } from "./apiBase";
 import { authedFetch } from "./api";
 
 // End-to-end typed tRPC client. `@barnsquire/trpc/client` is a TYPE-ONLY export,
@@ -12,7 +12,7 @@ export function createTrpcClient() {
   return trpc.createClient({
     links: [
       httpBatchLink({
-        url: TRPC_URL,
+        url: getTrpcUrl(),
         fetch: authedFetch,
       }),
     ],

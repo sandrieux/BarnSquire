@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system";
-import { API_URL } from "./config";
+import { getApiUrl } from "./apiBase";
+import { emitSessionExpired } from "./authEvents";
 import {
   getAccessTokenSync,
   getRefreshToken,
@@ -24,7 +25,7 @@ export interface LoginResponse {
 // --- REST auth endpoints (outside tRPC) ---------------------------------------
 
 export async function loginRequest(email: string, password: string): Promise<LoginResponse> {
-  const res = await fetch(`${API_URL}/api/mobile/login`, {
+  const res = await fetch(`${getApiUrl()}/api/mobile/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -39,7 +40,7 @@ export async function loginRequest(email: string, password: string): Promise<Log
 async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return null;
-  const res = await fetch(`${API_URL}/api/mobile/refresh`, {
+  const res = await fetch(`${getApiUrl()}/api/mobile/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
@@ -72,7 +73,9 @@ export const authedFetch: typeof fetch = async (input, init) => {
     if (refreshed) {
       res = await fetch(input as RequestInfo, withAuth(refreshed));
     } else {
+      // Unrecoverable: drop the session and tell the app to return to login.
       await clearSession();
+      emitSessionExpired();
     }
   }
   return res;

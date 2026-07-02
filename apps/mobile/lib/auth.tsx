@@ -2,6 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import * as LocalAuthentication from "expo-local-authentication";
 import { loginRequest, type MobileUser } from "./api";
 import { clearSession, loadSession, setSession } from "./tokenStore";
+import { onSessionExpired } from "./authEvents";
+import { getApiUrl, loadApiBase, setApiBase } from "./apiBase";
 
 // Auth states:
 //  loading   – reading persisted session on launch
@@ -13,10 +15,12 @@ type Status = "loading" | "signedOut" | "locked" | "signedIn";
 interface AuthContextValue {
   status: Status;
   user: MobileUser | null;
+  apiUrl: string;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   unlock: () => Promise<boolean>;
   setUser: (user: MobileUser) => void;
+  setApiUrl: (url: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -30,9 +34,12 @@ export function useAuth(): AuthContextValue {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUser] = useState<MobileUser | null>(null);
+  const [apiUrl, setApiUrlState] = useState<string>(getApiUrl());
 
   useEffect(() => {
     (async () => {
+      await loadApiBase();
+      setApiUrlState(getApiUrl());
       const { refreshToken, user: storedUser } = await loadSession();
       if (refreshToken && storedUser) {
         setUser(storedUser);
@@ -45,6 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, []);
+
+  // The network layer signals an unrecoverable session (failed token refresh);
+  // drop to the login screen automatically instead of showing UNAUTHORIZED.
+  useEffect(() => onSessionExpired(() => {
+    setUser(null);
+    setStatus("signedOut");
+  }), []);
 
   const login = useCallback(async (email: string, password: string) => {
     const { accessToken, refreshToken, user: u } = await loginRequest(email, password);
@@ -71,8 +85,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   }, []);
 
+  const setApiUrl = useCallback(async (url: string) => {
+    await setApiBase(url);
+    setApiUrlState(getApiUrl());
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ status, user, login, logout, unlock, setUser }}>
+    <AuthContext.Provider
+      value={{ status, user, apiUrl, login, logout, unlock, setUser, setApiUrl }}
+    >
       {children}
     </AuthContext.Provider>
   );
