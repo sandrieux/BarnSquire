@@ -192,7 +192,7 @@ export default function TodayScreen() {
             {t("today.feedsLow", { count: refillCount })}
             {refills.data?.[0]
               ? ` — ${refills.data[0].feedType} (${t("today.feedDaysLeft", {
-                  days: refills.data[0].daysLeft,
+                  days: Math.round(refills.data[0].daysLeft ?? 0),
                 })})`
               : ""}
           </Text>

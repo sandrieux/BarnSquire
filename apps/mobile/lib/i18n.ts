@@ -1,3 +1,9 @@
+// Hermes lacks full Intl.PluralRules, which ICU plural messages
+// ({count, plural, ...}) need — polyfill it before i18n initializes.
+import "@formatjs/intl-pluralrules/polyfill-force";
+import "@formatjs/intl-pluralrules/locale-data/en";
+import "@formatjs/intl-pluralrules/locale-data/fr";
+
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import ICU from "i18next-icu";
