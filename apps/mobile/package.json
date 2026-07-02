@@ -16,7 +16,6 @@
     "@barnsquire/validators": "workspace:*",
     "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "^14.1.0",
-    "@formatjs/intl-pluralrules": "^5.4.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "11.4.1",
     "@tanstack/query-async-storage-persister": "^5.80.2",

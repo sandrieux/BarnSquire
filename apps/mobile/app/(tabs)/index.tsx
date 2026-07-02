@@ -184,17 +184,14 @@ export default function TodayScreen() {
         </View>
       </View>
 
-      {/* low feed banner */}
-      {refillCount > 0 ? (
+      {/* low feed banner — avoids ICU plurals (unsupported by Hermes here) */}
+      {refillCount > 0 && refills.data?.[0] ? (
         <Pressable onPress={() => router.push("/(tabs)/prep")} style={styles.feedBanner}>
           <Ionicons name="alert-circle-outline" size={18} color={colors.warnText} />
           <Text style={styles.feedBannerText}>
-            {t("today.feedsLow", { count: refillCount })}
-            {refills.data?.[0]
-              ? ` — ${refills.data[0].feedType} (${t("today.feedDaysLeft", {
-                  days: Math.round(refills.data[0].daysLeft ?? 0),
-                })})`
-              : ""}
+            {refills.data[0].feedType} —{" "}
+            {t("today.feedDaysLeft", { days: Math.round(refills.data[0].daysLeft ?? 0) })}
+            {refillCount > 1 ? ` (+${refillCount - 1})` : ""}
           </Text>
         </Pressable>
       ) : null}
