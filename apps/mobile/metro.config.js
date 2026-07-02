@@ -14,8 +14,8 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),
 ];
-// Resolve pnpm symlinks and don't walk up past our declared module roots.
+// Resolve pnpm symlinks; keep hierarchical lookup ON so Metro can walk up the
+// isolated pnpm trees (do NOT disable it under pnpm's default linker).
 config.resolver.unstable_enableSymlinks = true;
-config.resolver.disableHierarchicalLookup = true;
 
 module.exports = config;

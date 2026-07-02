@@ -14,6 +14,7 @@
   "dependencies": {
     "@barnsquire/trpc": "workspace:*",
     "@barnsquire/validators": "workspace:*",
+    "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "11.4.1",
