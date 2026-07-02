@@ -42,7 +42,37 @@ services:
       STORAGE_REGION: ${STORAGE_REGION}
       STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL}
     ports:
-      - "3000:3000"
+      - "3000:3000" # direct HTTP (host tools/cron); Caddy also fronts it over TLS
     depends_on:
       - postgres
       - minio
+
+  caddy:
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+      OVH_ENDPOINT: ${OVH_ENDPOINT}
+      OVH_APPLICATION_KEY: ${OVH_APPLICATION_KEY}
+      OVH_APPLICATION_SECRET: ${OVH_APPLICATION_SECRET}
+      OVH_CONSUMER_KEY: ${OVH_CONSUMER_KEY}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /data/caddy/data:/data
+      - /data/caddy/config:/config
+    depends_on:
+      - app
+      - minio
+    networks:
+      default:
+        # So the app resolves these hostnames to Caddy *inside* the Docker
+        # network (valid cert) while LAN devices resolve them via your LAN DNS.
+        aliases:
+          - barnsquire.lysranch.com
+          - storage.lysranch.com

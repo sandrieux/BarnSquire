@@ -1,0 +1,8 @@
+# Custom Caddy build that includes the OVH DNS plugin, so Caddy can solve the
+# ACME DNS-01 challenge (create TXT records) and obtain/renew publicly-trusted
+# Let's Encrypt certs with no inbound ports. https://github.com/caddy-dns/ovh
+FROM caddy:2-builder AS builder
+RUN xcaddy build --with github.com/caddy-dns/ovh
+
+FROM caddy:2
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
