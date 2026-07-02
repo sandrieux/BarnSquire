@@ -23,10 +23,9 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "esbuild", "prisma", "sharp", "unrs-resolver"],
+    "comment": "Dedupe @types/react (types only) so web's tsc doesn't see two copies. Do NOT override runtime react/react-dom — mobile must keep 19.0.0 to match react-native-renderer.",
     "overrides": {
-      "@types/react": "^19.1.6",
-      "react": "^19.1.0",
-      "react-dom": "^19.1.0"
+      "@types/react": "^19.1.6"
     }
   }
 }
