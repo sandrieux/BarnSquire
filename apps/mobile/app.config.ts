@@ -20,6 +20,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSPhotoLibraryUsageDescription:
         "BarnSquire attaches photos from your library to the animal ledger.",
       NSFaceIDUsageDescription: "BarnSquire uses Face ID to unlock the app.",
+      // Allow plain-HTTP to LAN dev servers (private IPs / .local) so a physical
+      // device can reach `http://<mac-ip>:3000`. App-Store-safe — it does NOT
+      // permit arbitrary cleartext to public hosts.
+      NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
     },
   },
   android: {
