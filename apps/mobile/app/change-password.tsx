@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { trpc } from "../lib/trpc";
@@ -8,6 +9,7 @@ import { colors } from "../lib/theme";
 
 export default function ChangePasswordScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { user, setUser, logout } = useAuth();
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -28,6 +30,7 @@ export default function ChangePasswordScreen() {
       await changePassword.mutateAsync({ newPassword: pw });
       // Clearing the flag lets the auth gate route on to the app.
       if (user) setUser({ ...user, mustChangePassword: false });
+      router.replace("/(tabs)");
     } catch (e) {
       setError(e instanceof Error ? e.message : t("auth.registrationFailed"));
     }

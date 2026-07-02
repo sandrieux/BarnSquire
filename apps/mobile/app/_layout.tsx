@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { I18nextProvider } from "react-i18next";
@@ -23,9 +23,20 @@ export default function RootLayout() {
 }
 
 function AppProviders() {
-  const { user } = useAuth();
-  const [trpcClient] = useState(() => createTrpcClient());
+  const { user, apiUrl } = useAuth();
+  // Recreate the tRPC client when the instance URL changes (baked httpBatchLink url).
+  const trpcClient = useMemo(() => createTrpcClient(), [apiUrl]);
   const [i18n] = useState(() => initI18n(user?.locale));
+
+  // Drop cached data when switching instances (skip the initial mount).
+  const firstApiUrl = useRef(true);
+  useEffect(() => {
+    if (firstApiUrl.current) {
+      firstApiUrl.current = false;
+      return;
+    }
+    queryClient.clear();
+  }, [apiUrl]);
 
   useEffect(() => subscribeAppState(), []);
   useEffect(() => {
