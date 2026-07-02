@@ -6,6 +6,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "BarnSquire",
   slug: "barnsquire",
+  owner: "sandrieux",
   version: "0.1.0",
   orientation: "portrait",
   scheme: "barnsquire",
@@ -45,10 +46,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     "expo-local-authentication",
     "expo-notifications",
+    "./plugins/withFmtBuildFix",
   ],
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000",
-    // Filled in by EAS; used for Expo push token registration.
-    eas: { projectId: process.env.EAS_PROJECT_ID },
+    // EAS project id (also used for Expo push token registration). Not secret.
+    eas: { projectId: process.env.EAS_PROJECT_ID ?? "5fc846da-9243-4d5c-b1d2-cc03fbb4f0a6" },
   },
 });
