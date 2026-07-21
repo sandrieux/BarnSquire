@@ -128,7 +128,23 @@ export const barnRouter = router({
   updateMemberRole: protectedProcedure
     .input(updateMemberRoleSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      const actor = await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId, "BARN_MANAGER");
+      if (input.userId === ctx.session.user.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot change your own role" });
+      }
+      const target = await ctx.db.barnMembership.findUnique({
+        where: { userId_barnId: { userId: input.userId, barnId: input.barnId } },
+      });
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Not a member of this barn" });
+      // Mirror removeMember/resetMemberPassword: a manager cannot act on a
+      // higher-privileged member (e.g. demote the barn's GLOBAL_ADMIN owner),
+      // nor grant a role above their own level.
+      if (ROLE_ORDER[target.role] > ROLE_ORDER[actor.role]) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot change a higher-privileged member" });
+      }
+      if (ROLE_ORDER[input.role] > ROLE_ORDER[actor.role]) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot assign a role above your own" });
+      }
       return ctx.db.barnMembership.update({
         where: { userId_barnId: { userId: input.userId, barnId: input.barnId } },
         data: { role: input.role },
@@ -176,7 +192,13 @@ export const barnRouter = router({
       const passwordHash = await bcrypt.hash(input.newPassword, 12);
       await ctx.db.user.update({
         where: { id: input.userId },
-        data: { passwordHash, mustChangePassword: input.requireChange },
+        // Bump tokenVersion so the target's outstanding mobile tokens are revoked
+        // — this is the action taken to lock out a suspected attacker.
+        data: {
+          passwordHash,
+          mustChangePassword: input.requireChange,
+          tokenVersion: { increment: 1 },
+        },
       });
       return { ok: true };
     }),

@@ -19,11 +19,25 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;
 
-const enforceAuth = t.middleware(({ ctx, next }) => {
+// A user flagged mustChangePassword may only read and change their own
+// password until it is cleared. Enforced here (not just via the web redirect)
+// so direct tRPC/mobile calls can't operate the app with a temporary password.
+function assertPasswordChanged(
+  ctx: Context,
+  type: "query" | "mutation" | "subscription",
+  path: string,
+) {
+  if (ctx.mustChangePassword && type === "mutation" && path !== "user.changePassword") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "PASSWORD_CHANGE_REQUIRED" });
+  }
+}
+
+const enforceAuth = t.middleware(({ ctx, next, type, path }) => {
   const userId = ctx.session?.user?.id;
   if (!userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
+  assertPasswordChanged(ctx, type, path);
   return next({
     ctx: {
       ...ctx,
@@ -40,10 +54,11 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
 
 export const protectedProcedure = t.procedure.use(enforceAuth);
 
-const enforceGlobalAdmin = t.middleware(({ ctx, next }) => {
+const enforceGlobalAdmin = t.middleware(({ ctx, next, type, path }) => {
   const userId = ctx.session?.user?.id;
   if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
   if (!ctx.isGlobalAdmin) throw new TRPCError({ code: "FORBIDDEN" });
+  assertPasswordChanged(ctx, type, path);
   return next({
     ctx: {
       ...ctx,

@@ -17,6 +17,9 @@ async function main() {
       // Force a password change on first login so the well-known default
       // ("password123") can't persist in a real deployment.
       mustChangePassword: true,
+      // The only system-wide superuser. Per-barn GLOBAL_ADMIN memberships no
+      // longer confer this — it must be granted explicitly on the User row.
+      isSystemAdmin: true,
     },
   });
 

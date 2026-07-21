@@ -1,4 +1,5 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { db } from "@barnsquire/db";
 import { appRouter, createContext } from "@barnsquire/trpc";
 import type { AuthSession } from "@barnsquire/trpc";
 import { auth } from "@/lib/auth";
@@ -19,7 +20,15 @@ const handler = (req: NextRequest) =>
       if (authorization?.startsWith("Bearer ")) {
         const claims = await verifyMobileToken(authorization.slice("Bearer ".length), "access");
         if (claims?.sub) {
-          session = { user: { id: claims.sub, name: claims.name, email: claims.email } };
+          // Reject access tokens minted before the last password change/reset so
+          // a stolen token stops working immediately, not just after it expires.
+          const user = await db.user.findUnique({
+            where: { id: claims.sub },
+            select: { tokenVersion: true },
+          });
+          if (user && claims.tokenVersion === user.tokenVersion) {
+            session = { user: { id: claims.sub, name: claims.name, email: claims.email } };
+          }
         }
       } else {
         const nextSession = await auth();

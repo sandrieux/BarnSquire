@@ -22,6 +22,7 @@ export interface Context {
   db: typeof db;
   session: AuthSession | null;
   isGlobalAdmin: boolean;
+  mustChangePassword: boolean;
 }
 
 export interface AuthenticatedContext extends Context {
@@ -34,11 +35,21 @@ export interface CreateContextOptions {
 
 export async function createContext({ session }: CreateContextOptions): Promise<Context> {
   const userId = session?.user?.id;
-  const isGlobalAdmin = userId
-    ? (await db.barnMembership.findFirst({
-        where: { userId, role: "GLOBAL_ADMIN" },
-      })) !== null
-    : false;
+  // System-admin authority comes ONLY from User.isSystemAdmin — never from a
+  // barn membership role. barn.create grants a per-barn GLOBAL_ADMIN membership
+  // (barn owner); deriving global admin from that would let any user self-
+  // promote by creating a throwaway barn.
+  const user = userId
+    ? await db.user.findUnique({
+        where: { id: userId },
+        select: { isSystemAdmin: true, mustChangePassword: true },
+      })
+    : null;
 
-  return { db, session, isGlobalAdmin };
+  return {
+    db,
+    session,
+    isGlobalAdmin: user?.isSystemAdmin ?? false,
+    mustChangePassword: user?.mustChangePassword ?? false,
+  };
 }

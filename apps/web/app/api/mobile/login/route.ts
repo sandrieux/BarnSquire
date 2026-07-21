@@ -30,7 +30,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  const claims = { sub: user.id, email: user.email, name: user.name };
+  const claims = {
+    sub: user.id,
+    email: user.email,
+    name: user.name,
+    tokenVersion: user.tokenVersion,
+  };
   const [accessToken, refreshToken] = await Promise.all([
     signAccessToken(claims),
     signRefreshToken(claims),

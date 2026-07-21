@@ -22,7 +22,8 @@ export const userRouter = router({
       const passwordHash = await bcrypt.hash(input.newPassword, 12);
       await ctx.db.user.update({
         where: { id: ctx.session.user.id },
-        data: { passwordHash, mustChangePassword: false },
+        // Bump tokenVersion so any outstanding mobile tokens are invalidated.
+        data: { passwordHash, mustChangePassword: false, tokenVersion: { increment: 1 } },
       });
       return { ok: true };
     }),

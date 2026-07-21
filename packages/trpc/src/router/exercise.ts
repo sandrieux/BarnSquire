@@ -23,6 +23,28 @@ async function assertAnimalBarnAccess(
   return animal;
 }
 
+// Reject an arena/pasture that lives in a different barn than the animal
+// (cross-tenant reference: capacity/name leak). Only validates the ids present
+// in `refs`; undefined ids are left unchanged.
+async function assertExerciseLocationsInBarn(
+  db: import("@barnsquire/db").PrismaClient,
+  barnId: string,
+  refs: { locationArenaId?: string | null; locationPastureId?: string | null }
+) {
+  if (refs.locationArenaId) {
+    const arena = await db.arena.findUnique({ where: { id: refs.locationArenaId } });
+    if (!arena || arena.barnId !== barnId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Arena not found" });
+    }
+  }
+  if (refs.locationPastureId) {
+    const pasture = await db.pasture.findUnique({ where: { id: refs.locationPastureId } });
+    if (!pasture || pasture.barnId !== barnId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Pasture not found" });
+    }
+  }
+}
+
 export const exerciseRouter = router({
   list: protectedProcedure
     .input(z.object({ animalId: z.string().cuid() }))
@@ -41,7 +63,8 @@ export const exerciseRouter = router({
   create: protectedProcedure
     .input(createExerciseSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId);
+      const animal = await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId);
+      await assertExerciseLocationsInBarn(ctx.db, animal.barnId, input);
       return ctx.db.exerciseSchedule.create({ data: input });
     }),
 
@@ -51,7 +74,8 @@ export const exerciseRouter = router({
       const { id, ...data } = input;
       const existing = await ctx.db.exerciseSchedule.findUnique({ where: { id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, existing.animalId);
+      const animal = await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, existing.animalId);
+      await assertExerciseLocationsInBarn(ctx.db, animal.barnId, data);
       return ctx.db.exerciseSchedule.update({ where: { id }, data });
     }),
 

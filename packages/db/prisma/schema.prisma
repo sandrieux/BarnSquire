@@ -16,6 +16,11 @@ model User {
   emailVerified      DateTime?
   passwordHash       String?
   mustChangePassword Boolean   @default(false)
+  // System-wide superuser. Distinct from the per-barn GLOBAL_ADMIN membership
+  // role (barn owner) — that role must NEVER confer cross-tenant authority.
+  isSystemAdmin      Boolean   @default(false)
+  // Bumped on every password change/reset to invalidate outstanding mobile JWTs.
+  tokenVersion       Int       @default(0)
   locale             String?
   image              String?
   createdAt          DateTime  @default(now())
