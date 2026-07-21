@@ -1,6 +1,7 @@
 {
   "name": "@barnsquire/mobile",
   "version": "0.1.0",
+  "license": "Elastic-2.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {

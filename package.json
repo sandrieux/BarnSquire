@@ -1,6 +1,7 @@
 {
   "name": "barnsquire",
   "private": true,
+  "license": "Elastic-2.0",
   "packageManager": "pnpm@10.34.3",
   "scripts": {
     "dev": "turbo run dev",

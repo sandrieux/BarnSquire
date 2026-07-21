@@ -61,6 +61,17 @@ http://localhost:9001 (`minio` / `minio123`).
 See [CLAUDE.md](CLAUDE.md) for conventions and the full development guide, and
 `docker-compose.prod.yml` + `Dockerfile` for production deployment.
 
+## License
+
+BarnSquire is **source-available** under the
+[Elastic License 2.0](LICENSE). In plain terms:
+
+- ✅ Use it, modify it, and self-host it for your own barn(s) — including
+  commercial facilities — free of charge
+- ✅ Fork it and share your changes
+- ❌ Offer BarnSquire to third parties as a hosted or managed service (SaaS),
+  or resell it
+
 ## Privacy
 
 BarnSquire is self-hosted: your data lives on the server instance you (or your
