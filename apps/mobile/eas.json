@@ -22,13 +22,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://barnsquire.example.com"
+        "EXPO_PUBLIC_API_URL": "https://barnsquire.lysranch.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://barnsquire.example.com"
+        "EXPO_PUBLIC_API_URL": "https://barnsquire.lysranch.com"
       }
     }
   },

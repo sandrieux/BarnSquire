@@ -24,6 +24,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // device can reach `http://<mac-ip>:3000`. App-Store-safe — it does NOT
       // permit arbitrary cleartext to public hosts.
       NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
+      // Standard HTTPS only — answers App Store Connect's export-compliance
+      // question up front so TestFlight builds aren't held for it.
+      ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
