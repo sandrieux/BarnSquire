@@ -51,6 +51,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-local-authentication",
     "expo-notifications",
     "./plugins/withFmtBuildFix",
+    "./plugins/withDisableScriptSandboxing",
   ],
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000",
