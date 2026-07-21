@@ -52,8 +52,6 @@ export function PhotoLibrary({
         await confirmUpload.mutateAsync({
           animalId,
           storageKey,
-          mimeType: file.type,
-          sizeBytes: file.size,
         });
       }
     } catch (e) {

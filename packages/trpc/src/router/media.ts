@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
-import { getPresignedUploadUrl, getPresignedViewUrl, deleteObject } from "../storage";
+import { getPresignedUploadUrl, getPresignedViewUrl, deleteObject, headObject, MAX_UPLOAD_BYTES } from "../storage";
 
 async function assertAnimalBarnAccess(
   db: import("@barnsquire/db").PrismaClient,
@@ -54,18 +54,41 @@ export const mediaRouter = router({
     }),
 
   // Step 2: client confirms the upload completed; we persist the record.
+  // storageKey / mimeType / sizeBytes are NOT trusted from the client — the key
+  // must match this animal's prefix, and the real size/type come from the object.
   confirmUpload: protectedProcedure
     .input(z.object({
       animalId: z.string().cuid(),
       storageKey: z.string(),
-      mimeType: z.string(),
-      sizeBytes: z.number().int().positive(),
       caption: z.string().optional(),
       takenAt: z.coerce.date().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId);
-      return ctx.db.mediaFile.create({ data: input });
+      // L4: only accept a key this animal's getUploadUrl could have issued —
+      // otherwise a caller could register (and later read) another barn's object.
+      if (!input.storageKey.startsWith(`animals/${input.animalId}/`)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Invalid storage key" });
+      }
+      // L5: verify the actual object; reject oversize / wrong-type uploads.
+      const head = await headObject(input.storageKey);
+      if (!head) throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not found" });
+      if (head.contentLength > MAX_UPLOAD_BYTES) {
+        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File exceeds the size limit" });
+      }
+      if (!head.contentType || !ALLOWED_MIME.includes(head.contentType)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported image type" });
+      }
+      return ctx.db.mediaFile.create({
+        data: {
+          animalId: input.animalId,
+          storageKey: input.storageKey,
+          mimeType: head.contentType,
+          sizeBytes: head.contentLength,
+          caption: input.caption,
+          takenAt: input.takenAt,
+        },
+      });
     }),
 
   delete: protectedProcedure
