@@ -63,10 +63,15 @@ COPY --from=builder --chown=barnsquire:barnsquire /app/packages/db/package.json 
 COPY --from=builder --chown=barnsquire:barnsquire /app/node_modules/.pnpm ./node_modules/.pnpm
 COPY --from=builder --chown=barnsquire:barnsquire /app/packages/db/node_modules ./packages/db/node_modules
 
+# Self-migrate on startup: apply the schema (prisma db push), then run the server.
+COPY --chown=barnsquire:barnsquire docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 USER barnsquire
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "apps/web/server.js"]

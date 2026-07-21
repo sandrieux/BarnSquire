@@ -5,6 +5,7 @@ import { createServerCaller } from "@/lib/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MembersManager } from "@/components/barn/MembersManager";
+import { BarnSettingsForm } from "@/components/barn/BarnSettingsForm";
 import Link from "next/link";
 
 export default async function BarnSettingsPage({ params }: { params: Promise<{ barnId: string }> }) {
@@ -13,8 +14,11 @@ export default async function BarnSettingsPage({ params }: { params: Promise<{ b
 
   const { barnId } = await params;
   const caller = await createServerCaller();
-  const barn = await caller.barn.get({ barnId });
+  const [barn, barns] = await Promise.all([caller.barn.get({ barnId }), caller.barn.list()]);
   const t = await getTranslations("settings");
+
+  const role = barns.find((b: { id: string; role: string }) => b.id === barnId)?.role;
+  const canManage = role === "BARN_MANAGER" || role === "GLOBAL_ADMIN";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -25,20 +29,29 @@ export default async function BarnSettingsPage({ params }: { params: Promise<{ b
           <CardTitle className="text-base">{t("details")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <div className="flex gap-2">
-            <span className="text-muted-foreground w-24">{t("name")}</span>
-            <span>{barn.name}</span>
-          </div>
-          {barn.address && (
-            <div className="flex gap-2">
-              <span className="text-muted-foreground w-24">{t("address")}</span>
-              <span>{barn.address}</span>
-            </div>
+          {canManage ? (
+            <BarnSettingsForm
+              barnId={barnId}
+              barn={{ name: barn.name, address: barn.address, timezone: barn.timezone }}
+            />
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-24">{t("name")}</span>
+                <span>{barn.name}</span>
+              </div>
+              {barn.address && (
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground w-24">{t("address")}</span>
+                  <span>{barn.address}</span>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-24">{t("timezone")}</span>
+                <span>{barn.timezone}</span>
+              </div>
+            </>
           )}
-          <div className="flex gap-2">
-            <span className="text-muted-foreground w-24">{t("timezone")}</span>
-            <span>{barn.timezone}</span>
-          </div>
         </CardContent>
       </Card>
 

@@ -14,6 +14,7 @@ import { mediaRouter } from "./media";
 import { ledgerRouter } from "./ledger";
 import { adminRouter } from "./admin";
 import { userRouter } from "./user";
+import { notificationRouter } from "./notification";
 
 export const appRouter = router({
   user: userRouter,
@@ -31,6 +32,7 @@ export const appRouter = router({
   media: mediaRouter,
   ledger: ledgerRouter,
   admin: adminRouter,
+  notification: notificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -10,7 +10,7 @@ import type { RouterOutputs } from "@/lib/trpc/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, addDays, hourMinuteInTimeZone, todayInTimeZone } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
 import { FeedPrepTable } from "@/components/today/FeedPrepTable";
 
@@ -39,11 +39,11 @@ const TASK_BADGE_VARIANT: Record<string, "default" | "secondary" | "warning" | "
 const SLOTS = ["ALL", "MORNING", "LUNCH", "AFTERNOON", "EVENING"] as const;
 type SlotFilter = (typeof SLOTS)[number];
 
-// Current time-of-day slot from the browser clock — mirrors the server's
+// Current time-of-day slot in the barn's timezone — mirrors the server's
 // timeToSlot windows (Morning 06–12, Lunch 12–13, Afternoon 13–18, else Evening).
-function currentSlot(): SlotFilter {
-  const now = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
+function currentSlot(timeZone: string): SlotFilter {
+  const { hour, minute } = hourMinuteInTimeZone(timeZone);
+  const mins = hour * 60 + minute;
   if (mins >= 360 && mins < 720) return "MORNING";
   if (mins >= 720 && mins < 780) return "LUNCH";
   if (mins >= 780 && mins < 1080) return "AFTERNOON";
@@ -53,11 +53,15 @@ function currentSlot(): SlotFilter {
 export function TodayClient({
   barnId,
   barns,
-  date,
+  serverDate,
+  explicit,
+  barnTimeZone,
 }: {
   barnId: string;
   barns: Array<{ id: string; name: string }>;
-  date: string;
+  serverDate: string;
+  explicit: boolean;
+  barnTimeZone: string;
 }) {
   const router = useRouter();
   const t = useTranslations("today");
@@ -65,17 +69,24 @@ export function TodayClient({
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("ALL");
   const [optimisticDone, setOptimisticDone] = useState<Set<string>>(new Set());
 
-  // On load, default the filter to the current time-of-day slot (browser time)
-  // when viewing today, so caretakers land on what's due now. Computed client-side
-  // post-mount to avoid an SSR/browser-timezone hydration mismatch.
+  // For an explicit ?date= we follow the URL; for the default view we re-derive
+  // "today" from the live browser clock (barn timezone) so it can never be stuck
+  // on a stale/cached server render. JS is always running here, so this corrects
+  // the SSR value on mount.
+  const [date, setDate] = useState(serverDate);
   useEffect(() => {
-    if (date === new Date().toISOString().slice(0, 10)) {
-      setSlotFilter(currentSlot());
-    }
+    setDate(explicit ? serverDate : todayInTimeZone(barnTimeZone));
+  }, [serverDate, explicit, barnTimeZone]);
+
+  // On load of the default (today) view, preselect the current time-of-day slot.
+  useEffect(() => {
+    if (!explicit) setSlotFilter(currentSlot(barnTimeZone));
     // Mount only: don't override the user's manual choice on later re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [detail, setDetail] = useState<{ task: Task; location: string } | null>(null);
+
+  const isToday = date === todayInTimeZone(barnTimeZone);
 
   const utils = trpc.useUtils();
   const { data: groups = [] } = trpc.today.getDailyView.useQuery({ barnId, date });
@@ -96,9 +107,7 @@ export function TodayClient({
   const { data: refillsDue = [] } = trpc.feedStock.getRefillsDue.useQuery({ barnId });
 
   function navigateDate(delta: number) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + delta);
-    router.push(`/today?barnId=${barnId}&date=${d.toISOString().slice(0, 10)}`);
+    router.push(`/today?barnId=${barnId}&date=${addDays(date, delta)}`);
   }
 
   function handleComplete(task: Task) {
@@ -114,8 +123,6 @@ export function TodayClient({
       scheduledEventId: task.taskType === "SCHEDULED_EVENT" ? task.id : undefined,
     });
   }
-
-  const isToday = date === new Date().toISOString().slice(0, 10);
 
   const filteredGroups = groups.map((group) => ({
     ...group,
@@ -135,7 +142,14 @@ export function TodayClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {isToday ? t("title") : formatDate(date, locale)}
+            {isToday ? (
+              <>
+                {t("title")}{" "}
+                <span className="text-muted-foreground font-normal">· {formatDate(date, locale)}</span>
+              </>
+            ) : (
+              formatDate(date, locale)
+            )}
           </h1>
           <p className="text-muted-foreground text-sm">
             {t("tasksCompleted", { done: doneTasks, total: totalTasks })}

@@ -1,7 +1,13 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { createServerCaller } from "@/lib/trpc/server";
+import { todayInTimeZone } from "@/lib/utils";
 import { TodayClient } from "./TodayClient";
+
+// The resolved "today" must reflect the live server clock on every request —
+// never a cached/prerendered render (which is why it could get stuck a day behind).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function TodayPage({
   searchParams,
@@ -26,7 +32,20 @@ export default async function TodayPage({
   }
 
   const barnId = params.barnId ?? barns[0]!.id;
-  const date = params.date ?? new Date().toISOString().slice(0, 10);
+  const barn = barns.find((b: { id: string }) => b.id === barnId);
+  const barnTimeZone = barn?.timezone ?? "UTC";
+  const explicit = !!params.date;
+  // SSR hint only; the client re-derives "today" from the live browser clock for
+  // the default view so it's never stuck on a stale/cached server render.
+  const serverDate = params.date ?? todayInTimeZone(barnTimeZone);
 
-  return <TodayClient barnId={barnId} barns={barns} date={date} />;
+  return (
+    <TodayClient
+      barnId={barnId}
+      barns={barns}
+      serverDate={serverDate}
+      explicit={explicit}
+      barnTimeZone={barnTimeZone}
+    />
+  );
 }

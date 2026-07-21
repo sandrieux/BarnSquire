@@ -1,0 +1,28 @@
+{
+	email {env.ACME_EMAIL}
+}
+
+# Reusable TLS block: obtain/renew certs via OVH DNS-01 (no inbound ports needed).
+(ovh_tls) {
+	tls {
+		dns ovh {
+			endpoint {env.OVH_ENDPOINT}
+			application_key {env.OVH_APPLICATION_KEY}
+			application_secret {env.OVH_APPLICATION_SECRET}
+			consumer_key {env.OVH_CONSUMER_KEY}
+		}
+	}
+}
+
+# BarnSquire web + API
+barnsquire.lysranch.com {
+	import ovh_tls
+	reverse_proxy app:3000
+}
+
+# MinIO S3 API (presigned upload/view of ledger attachments & photos).
+# Path-style + Host preservation (Caddy's default) keeps SigV4 signatures valid.
+storage.lysranch.com {
+	import ovh_tls
+	reverse_proxy minio:9000
+}

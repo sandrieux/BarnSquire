@@ -1,10 +1,12 @@
 {
   "name": "@barnsquire/trpc",
   "version": "0.1.0",
+  "license": "Elastic-2.0",
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./server": "./src/server.ts"
+    "./server": "./src/server.ts",
+    "./client": "./exports/client.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1072.0",
