@@ -8,6 +8,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "barnsquire",
   owner: "sandrieux",
   version: "0.1.0",
+  // Rendered from the Lys Ranch logo; editable SVG sources live next to the PNGs in assets/
+  icon: "./assets/icon.png",
   orientation: "portrait",
   scheme: "barnsquire",
   userInterfaceStyle: "automatic",
@@ -31,7 +33,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.barnsquire.app",
-    adaptiveIcon: { backgroundColor: "#ffffff" },
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#F6F1E7",
+    },
     permissions: ["CAMERA"],
   },
   plugins: [
