@@ -30,8 +30,19 @@
     "noTasks": "Aucune tâche pour ce jour.",
     "viewDetails": "Voir les détails",
     "skipped": "Passé",
-    "slots": { "ALL": "Tout", "MORNING": "Matin", "LUNCH": "Midi", "AFTERNOON": "Après-midi", "EVENING": "Soir" },
-    "locationTypes": { "stall": "Box", "pasture": "Pâture", "barn": "Écurie", "unassigned": "Aucun emplacement" },
+    "slots": {
+      "ALL": "Tout",
+      "MORNING": "Matin",
+      "LUNCH": "Midi",
+      "AFTERNOON": "Après-midi",
+      "EVENING": "Soir"
+    },
+    "locationTypes": {
+      "stall": "Box",
+      "pasture": "Pâture",
+      "barn": "Écurie",
+      "unassigned": "Aucun emplacement"
+    },
     "taskTypes": {
       "FEEDING": "Alimentation",
       "MEDICATION": "Médication",
@@ -101,5 +112,12 @@
     "passwordUpdated": "Mot de passe mis à jour. Redirection vers la connexion…",
     "setNewPasswordTitle": "Définir un nouveau mot de passe",
     "setNewPasswordDesc": "Choisissez un nouveau mot de passe pour terminer la configuration de votre compte."
+  },
+  "scan": {
+    "notATag": "Ce n’est pas une étiquette BarnSquire.",
+    "barnNotAccessible": "Vous n’avez pas accès à cette écurie."
+  },
+  "animals": {
+    "filteredByLocation": "Filtré par emplacement"
   }
 }

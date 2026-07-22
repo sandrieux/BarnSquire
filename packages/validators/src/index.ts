@@ -6,3 +6,4 @@ export * from "./appointment";
 export * from "./turnout";
 export * from "./exercise";
 export * from "./scheduledEvent";
+export * from "./tags";

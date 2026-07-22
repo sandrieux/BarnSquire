@@ -15,6 +15,7 @@ import { ledgerRouter } from "./ledger";
 import { adminRouter } from "./admin";
 import { userRouter } from "./user";
 import { notificationRouter } from "./notification";
+import { tagRouter } from "./tag";
 
 export const appRouter = router({
   user: userRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   ledger: ledgerRouter,
   admin: adminRouter,
   notification: notificationRouter,
+  tag: tagRouter,
 });
 
 export type AppRouter = typeof appRouter;

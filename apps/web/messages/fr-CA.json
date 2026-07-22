@@ -7,7 +7,8 @@
     "stock": "Stock",
     "settings": "Paramètres",
     "admin": "Admin",
-    "barnSection": "Écurie"
+    "barnSection": "Écurie",
+    "tags": "Étiquettes"
   },
   "topnav": {
     "changePassword": "Changer le mot de passe",
@@ -30,8 +31,19 @@
     "noTasks": "Aucune tâche pour cette journée.",
     "viewDetails": "Voir les détails",
     "skipped": "Ignoré",
-    "slots": { "ALL": "Tout", "MORNING": "Matin", "LUNCH": "Midi", "AFTERNOON": "Après-midi", "EVENING": "Soir" },
-    "locationTypes": { "stall": "Stalle", "pasture": "Pâturage", "barn": "Écurie", "unassigned": "Aucun emplacement" },
+    "slots": {
+      "ALL": "Tout",
+      "MORNING": "Matin",
+      "LUNCH": "Midi",
+      "AFTERNOON": "Après-midi",
+      "EVENING": "Soir"
+    },
+    "locationTypes": {
+      "stall": "Stalle",
+      "pasture": "Pâturage",
+      "barn": "Écurie",
+      "unassigned": "Aucun emplacement"
+    },
     "taskTypes": {
       "FEEDING": "Alimentation",
       "MEDICATION": "Médication",
@@ -101,5 +113,24 @@
     "passwordUpdated": "Mot de passe mis à jour. Redirection vers la connexion…",
     "setNewPasswordTitle": "Définir un nouveau mot de passe",
     "setNewPasswordDesc": "Choisissez un nouveau mot de passe pour terminer la configuration de votre compte."
+  },
+  "tags": {
+    "title": "Étiquettes QR",
+    "description": "Générez des étiquettes QR imprimables et imprimables en 3D pour votre écurie, vos emplacements et vos animaux.",
+    "loading": "Chargement…",
+    "optionsTitle": "Options d’impression 3D",
+    "tagSizeMm": "Taille de l’étiquette (mm)",
+    "moduleHeightMm": "Hauteur des modules (mm)",
+    "mountSlot": "Fente pour attache autobloquante",
+    "scanHint": "Pour une meilleure lecture, changez la couleur du filament à la couche des modules en relief ou peignez les carrés en relief d’une couleur contrastante.",
+    "printSheet": "Feuille à imprimer",
+    "png": "PNG",
+    "stl": "STL",
+    "barn": "Écurie",
+    "buildings": "Bâtiments",
+    "stalls": "Stalles",
+    "pastures": "Pâturages",
+    "arenas": "Manèges",
+    "animals": "Animaux"
   }
 }

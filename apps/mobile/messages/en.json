@@ -30,8 +30,19 @@
     "noTasks": "No tasks for this day.",
     "viewDetails": "View details",
     "skipped": "Skipped",
-    "slots": { "ALL": "All", "MORNING": "Morning", "LUNCH": "Lunch", "AFTERNOON": "Afternoon", "EVENING": "Evening" },
-    "locationTypes": { "stall": "Stall", "pasture": "Pasture", "barn": "Barn", "unassigned": "No location" },
+    "slots": {
+      "ALL": "All",
+      "MORNING": "Morning",
+      "LUNCH": "Lunch",
+      "AFTERNOON": "Afternoon",
+      "EVENING": "Evening"
+    },
+    "locationTypes": {
+      "stall": "Stall",
+      "pasture": "Pasture",
+      "barn": "Barn",
+      "unassigned": "No location"
+    },
     "taskTypes": {
       "FEEDING": "Feeding",
       "MEDICATION": "Medication",
@@ -101,5 +112,12 @@
     "passwordUpdated": "Password updated. Redirecting you to sign in…",
     "setNewPasswordTitle": "Set a new password",
     "setNewPasswordDesc": "Choose a new password to finish setting up your account."
+  },
+  "scan": {
+    "notATag": "That is not a BarnSquire tag.",
+    "barnNotAccessible": "You do not have access to that barn."
+  },
+  "animals": {
+    "filteredByLocation": "Filtered by location"
   }
 }
