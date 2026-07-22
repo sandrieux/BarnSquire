@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Screen } from "../../components/Screen";
 import { BarnSwitcher } from "../../components/BarnSwitcher";
@@ -17,8 +17,15 @@ export default function AnimalsScreen() {
   const { barnId } = useBarn();
   const [search, setSearch] = useState("");
 
+  // A scanned stall/pasture tag routes here with a location id to filter by.
+  // Empty string → undefined so the cuid-validated tRPC input isn't sent "".
+  const params = useLocalSearchParams<{ stallId?: string; pastureId?: string }>();
+  const stallId = params.stallId || undefined;
+  const pastureId = params.pastureId || undefined;
+  const locationFilter = stallId ?? pastureId ?? null;
+
   const q = trpc.animal.list.useQuery(
-    { barnId: barnId ?? "" },
+    { barnId: barnId ?? "", stallId, pastureId },
     { enabled: !!barnId },
   );
 
@@ -41,6 +48,19 @@ export default function AnimalsScreen() {
           autoCapitalize="none"
         />
       </View>
+
+      {locationFilter ? (
+        <Pressable
+          style={styles.filterChip}
+          onPress={() => router.setParams({ stallId: "", pastureId: "" })}
+        >
+          <Ionicons name="location" size={14} color={colors.text} />
+          <Text style={styles.filterText}>
+            {q.data?.[0]?.homeStall?.name ?? q.data?.[0]?.homePasture?.name ?? t("animals.filteredByLocation")}
+          </Text>
+          <Ionicons name="close-circle" size={16} color={colors.muted} />
+        </Pressable>
+      ) : null}
 
       {q.isLoading ? (
         <Loading />
@@ -95,6 +115,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   searchInput: { flex: 1, fontSize: 16, color: colors.text },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+  },
+  filterText: { fontSize: 13, fontWeight: "600", color: colors.text },
   list: { paddingHorizontal: 16, paddingBottom: 32, gap: 8 },
   row: {
     flexDirection: "row",

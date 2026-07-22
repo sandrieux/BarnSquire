@@ -1,35 +1,71 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { parseTag, type TagPayload } from "@barnsquire/validators";
+import { useBarn } from "../lib/barn";
 import { AppButton } from "../components/ui";
 import { colors } from "../lib/theme";
 
-// Accepts a raw cuid, or any string/URL containing "animal/<id>".
-function extractAnimalId(data: string): string | null {
-  const trimmed = data.trim();
-  const m = trimmed.match(/animal\/([a-z0-9]+)/i);
-  if (m?.[1]) return m[1];
-  if (/^c[a-z0-9]{20,}$/i.test(trimmed)) return trimmed;
-  return null;
-}
-
 export default function ScanScreen() {
+  const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const router = useRouter();
+  const { barns, setBarnId } = useBarn();
   const [scanned, setScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Deep-link entry: an OS-camera scan opens `barnsquire://scan?t=…&b=…&id=…`,
+  // which lands here as route params. Dispatch it once on mount.
+  const params = useLocalSearchParams<{ t?: string; b?: string; id?: string }>();
+  const deepLinked = useRef(false);
+
+  // Routes a parsed tag to the right screen. Returns false if it can't (unknown
+  // tag, or a location/barn tag for a barn this user has no access to).
+  function dispatch(payload: TagPayload): boolean {
+    if (payload.type === "animal") {
+      router.replace(`/animal/${payload.id}`);
+      return true;
+    }
+    // Location/barn tags need a barn the caller belongs to.
+    if (!payload.barnId || !barns.some((b) => b.id === payload.barnId)) return false;
+    setBarnId(payload.barnId);
+    switch (payload.type) {
+      case "stall":
+        router.replace({ pathname: "/(tabs)/animals", params: { stallId: payload.id } });
+        return true;
+      case "pasture":
+        router.replace({ pathname: "/(tabs)/animals", params: { pastureId: payload.id } });
+        return true;
+      default:
+        // barn / building / arena → switch barn and open Today (MVP).
+        router.replace("/(tabs)");
+        return true;
+    }
+  }
+
+  useEffect(() => {
+    if (deepLinked.current) return;
+    if (params.t && params.id) {
+      deepLinked.current = true;
+      const payload: TagPayload = {
+        type: params.t as TagPayload["type"],
+        barnId: params.b,
+        id: params.id,
+      };
+      if (!dispatch(payload)) setError(t("scan.barnNotAccessible"));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.t, params.id, params.b]);
 
   function handleScan(result: { data: string }) {
     if (scanned) return;
     setScanned(true);
-    const id = extractAnimalId(result.data);
-    if (id) {
-      router.replace(`/animal/${id}`);
-    } else {
-      setError("That QR code isn't a BarnSquire stall tag.");
-      setTimeout(() => setScanned(false), 1500);
-    }
+    const payload = parseTag(result.data);
+    if (payload && dispatch(payload)) return;
+    setError(payload ? t("scan.barnNotAccessible") : t("scan.notATag"));
+    setTimeout(() => setScanned(false), 1500);
   }
 
   if (!permission) return <View style={styles.container} />;

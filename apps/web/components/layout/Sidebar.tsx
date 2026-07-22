@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { CalendarDays, Home, MapPin, User2, Settings, ShieldCheck, Package } from "lucide-react";
+import { CalendarDays, Home, MapPin, User2, Settings, ShieldCheck, Package, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -25,6 +25,7 @@ export function Sidebar({ barnId, isGlobalAdmin }: SidebarProps) {
         { href: `/barns/${barnId}/locations`, label: t("locations"), icon: MapPin },
         { href: `/barns/${barnId}/schedule`, label: t("schedule"), icon: CalendarDays },
         { href: `/barns/${barnId}/stock`, label: t("stock"), icon: Package },
+        { href: `/barns/${barnId}/tags`, label: t("tags"), icon: QrCode },
         { href: `/barns/${barnId}/settings`, label: t("settings"), icon: Settings },
       ]
     : [];
