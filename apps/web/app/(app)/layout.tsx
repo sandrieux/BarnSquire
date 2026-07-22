@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { db } from "@barnsquire/db";
 import { auth } from "@/lib/auth";
 import { createServerCaller } from "@/lib/trpc/server";
 import { TRPCProvider } from "@/lib/trpc/client";
@@ -16,6 +17,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const caller = await createServerCaller();
   const barns = await caller.barn.list();
 
+  // Admin nav is for system-wide admins only — NOT per-barn GLOBAL_ADMIN owners.
+  const isSystemAdmin = session.user?.id
+    ? (await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { isSystemAdmin: true },
+      }))?.isSystemAdmin ?? false
+    : false;
+
   // A user with no staff membership but owned animals is a read-only owner →
   // send them to their portal instead of the empty barn shell.
   if (barns.length === 0) {
@@ -28,7 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           barnId={barns[0]?.id}
-          isGlobalAdmin={barns.some((b: { role: string }) => b.role === "GLOBAL_ADMIN")}
+          isGlobalAdmin={isSystemAdmin}
         />
         <div className="flex-1 flex flex-col overflow-hidden">
           <TopNav

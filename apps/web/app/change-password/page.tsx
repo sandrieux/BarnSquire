@@ -21,7 +21,7 @@ export default async function ChangePasswordPage() {
           </p>
         </div>
         <TRPCProvider>
-          <ChangePasswordForm />
+          <ChangePasswordForm forced={Boolean(session.user?.mustChangePassword)} />
         </TRPCProvider>
       </div>
     </div>

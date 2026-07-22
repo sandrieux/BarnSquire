@@ -1,5 +1,9 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+/** Hard cap on any single uploaded object. Presigned PUT can't enforce this at
+ *  upload time, so callers HeadObject after upload and reject oversize files. */
+export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MiB
 
 function getEnv(key: string): string {
   const v = process.env[key];
@@ -44,6 +48,19 @@ export async function getPresignedViewUrl(storageKey: string) {
     Key: storageKey,
   });
   return getSignedUrl(getClient(), command, { expiresIn: 3600 });
+}
+
+/** Server-side metadata for an uploaded object; null if it does not exist.
+ *  Used to verify the real content-length/type instead of trusting the client. */
+export async function headObject(storageKey: string) {
+  try {
+    const out = await getClient().send(
+      new HeadObjectCommand({ Bucket: getBucket(), Key: storageKey })
+    );
+    return { contentLength: out.ContentLength ?? 0, contentType: out.ContentType ?? null };
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteObject(storageKey: string) {

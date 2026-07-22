@@ -29,10 +29,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 });
   }
 
+  // Reject tokens minted before the last password change/reset — this is what
+  // makes a password reset actually revoke a stolen refresh token.
+  if (claims.tokenVersion !== user.tokenVersion) {
+    return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 });
+  }
+
   const accessToken = await signAccessToken({
     sub: user.id,
     email: user.email,
     name: user.name,
+    tokenVersion: user.tokenVersion,
   });
   return NextResponse.json({ accessToken });
 }

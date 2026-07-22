@@ -33,6 +33,7 @@ function isoWeekday(date: Date): number {
 // AND their time ranges overlap.
 async function checkTurnoutCapacity(
   db: import("@barnsquire/db").PrismaClient,
+  barnId: string,
   toStallId: string | undefined,
   toPastureId: string | undefined,
   startTime: string,
@@ -41,8 +42,14 @@ async function checkTurnoutCapacity(
   excludeEventId?: string
 ) {
   if (toStallId) {
-    const stall = await db.stall.findUnique({ where: { id: toStallId } });
-    if (!stall) throw new TRPCError({ code: "NOT_FOUND", message: "Target stall not found" });
+    const stall = await db.stall.findUnique({
+      where: { id: toStallId },
+      include: { building: { select: { barnId: true } } },
+    });
+    // Reject a stall in another barn (cross-tenant capacity DoS + name leak).
+    if (!stall || stall.building.barnId !== barnId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Target stall not found" });
+    }
     const overlapping = await db.turnoutEvent.count({
       where: {
         toStallId,
@@ -63,7 +70,9 @@ async function checkTurnoutCapacity(
   }
   if (toPastureId) {
     const pasture = await db.pasture.findUnique({ where: { id: toPastureId } });
-    if (!pasture) throw new TRPCError({ code: "NOT_FOUND", message: "Target pasture not found" });
+    if (!pasture || pasture.barnId !== barnId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Target pasture not found" });
+    }
     const overlapping = await db.turnoutEvent.count({
       where: {
         toPastureId,
@@ -127,9 +136,9 @@ export const turnoutRouter = router({
   create: protectedProcedure
     .input(createTurnoutEventSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId);
+      const animal = await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId);
       await checkTurnoutCapacity(
-        ctx.db, input.toStallId, input.toPastureId, input.startTime, input.endTime, input.repeatDays
+        ctx.db, animal.barnId, input.toStallId, input.toPastureId, input.startTime, input.endTime, input.repeatDays
       );
       return ctx.db.turnoutEvent.create({ data: input });
     }),
@@ -140,12 +149,13 @@ export const turnoutRouter = router({
       const { id, ...data } = input;
       const event = await ctx.db.turnoutEvent.findUnique({ where: { id } });
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
-      await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, event.animalId);
+      const animal = await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, event.animalId);
 
       const toStallId = data.toStallId ?? event.toStallId ?? undefined;
       const toPastureId = data.toPastureId ?? event.toPastureId ?? undefined;
       await checkTurnoutCapacity(
         ctx.db,
+        animal.barnId,
         toStallId,
         toPastureId,
         data.startTime ?? event.startTime,

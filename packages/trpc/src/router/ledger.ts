@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
-import { getPresignedUploadUrl, getPresignedViewUrl, deleteObject } from "../storage";
+import { getPresignedUploadUrl, getPresignedViewUrl, deleteObject, headObject, MAX_UPLOAD_BYTES } from "../storage";
 import { assertAnimalReadAccess } from "../access";
 
 async function assertAnimalBarnAccess(
@@ -171,6 +171,29 @@ export const ledgerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId, "CARETAKER");
+      // Don't trust client storageKey / mimeType / sizeBytes: the key must match
+      // this animal's ledger prefix, and size/type come from the real object.
+      const attachments = await Promise.all(
+        input.attachments.map(async (a) => {
+          if (!a.storageKey.startsWith(`ledger/${input.animalId}/`)) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Invalid storage key" });
+          }
+          const head = await headObject(a.storageKey);
+          if (!head) throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not found" });
+          if (head.contentLength > MAX_UPLOAD_BYTES) {
+            throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File exceeds the size limit" });
+          }
+          if (!head.contentType || !ALLOWED_MIME.includes(head.contentType)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Only PDF, JPG, or PNG" });
+          }
+          return {
+            storageKey: a.storageKey,
+            fileName: a.fileName,
+            mimeType: head.contentType,
+            sizeBytes: head.contentLength,
+          };
+        })
+      );
       return ctx.db.ledgerEntry.create({
         data: {
           animalId: input.animalId,
@@ -179,7 +202,7 @@ export const ledgerRouter = router({
           notes: input.notes,
           occurredAt: input.occurredAt,
           createdByUserId: ctx.session.user.id,
-          attachments: { create: input.attachments },
+          attachments: { create: attachments },
         },
       });
     }),

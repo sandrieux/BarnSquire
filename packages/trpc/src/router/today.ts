@@ -15,6 +15,52 @@ async function assertBarnAccess(
   return membership;
 }
 
+// Task ids are supplied by the client. Membership in `barnId` does not imply
+// the referenced schedule/appointment/event lives there — without this check a
+// member of one barn could complete/skip/uncomplete another barn's tasks
+// (cross-tenant integrity: e.g. mark a real medication as already done).
+async function assertTaskRefsInBarn(
+  db: import("@barnsquire/db").PrismaClient,
+  barnId: string,
+  refs: {
+    animalId?: string;
+    feedingScheduleId?: string;
+    appointmentId?: string;
+    turnoutEventId?: string;
+    exerciseScheduleId?: string;
+    scheduledEventId?: string;
+  }
+) {
+  const deny = () => {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Task does not belong to this barn" });
+  };
+  const animalSel = { select: { animal: { select: { barnId: true } } } } as const;
+  if (refs.animalId) {
+    const a = await db.animal.findUnique({ where: { id: refs.animalId }, select: { barnId: true } });
+    if (!a || a.barnId !== barnId) deny();
+  }
+  if (refs.feedingScheduleId) {
+    const f = await db.feedingSchedule.findUnique({ where: { id: refs.feedingScheduleId }, ...animalSel });
+    if (!f || f.animal.barnId !== barnId) deny();
+  }
+  if (refs.appointmentId) {
+    const ap = await db.appointment.findUnique({ where: { id: refs.appointmentId }, select: { barnId: true } });
+    if (!ap || ap.barnId !== barnId) deny();
+  }
+  if (refs.turnoutEventId) {
+    const t = await db.turnoutEvent.findUnique({ where: { id: refs.turnoutEventId }, ...animalSel });
+    if (!t || t.animal.barnId !== barnId) deny();
+  }
+  if (refs.exerciseScheduleId) {
+    const e = await db.exerciseSchedule.findUnique({ where: { id: refs.exerciseScheduleId }, ...animalSel });
+    if (!e || e.animal.barnId !== barnId) deny();
+  }
+  if (refs.scheduledEventId) {
+    const s = await db.scheduledEvent.findUnique({ where: { id: refs.scheduledEventId }, select: { barnId: true } });
+    if (!s || s.barnId !== barnId) deny();
+  }
+}
+
 type Slot = "MORNING" | "LUNCH" | "AFTERNOON" | "EVENING";
 
 // Map a "HH:MM" time of day to a Today filter slot. Windows:
@@ -289,6 +335,7 @@ export const todayRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
+      await assertTaskRefsInBarn(ctx.db, input.barnId, input);
       const { barnId: _b, date, ...rest } = input;
       const scheduledDate = new Date(date);
       return ctx.db.taskCompletion.upsert({
@@ -339,6 +386,7 @@ export const todayRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
+      await assertTaskRefsInBarn(ctx.db, input.barnId, input);
       const scheduledDate = new Date(input.date);
       return ctx.db.taskCompletion.create({
         data: {
@@ -371,6 +419,7 @@ export const todayRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
+      await assertTaskRefsInBarn(ctx.db, input.barnId, input);
       const scheduledDate = new Date(input.date);
       await ctx.db.taskCompletion.deleteMany({
         where: {
@@ -380,6 +429,9 @@ export const todayRouter = router({
           turnoutEventId: input.turnoutEventId,
           exerciseScheduleId: input.exerciseScheduleId,
           scheduledEventId: input.scheduledEventId,
+          // Defense in depth: even if a ref check were bypassed, only rows whose
+          // animal/event is in this barn can be deleted.
+          OR: [{ animal: { barnId: input.barnId } }, { scheduledEvent: { barnId: input.barnId } }],
         },
       });
       return { ok: true };

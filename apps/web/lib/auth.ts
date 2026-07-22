@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { db } from "@barnsquire/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -19,7 +20,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
+        // Throttle brute-force / credential stuffing per source IP. Keyed by IP
+        // (not email) to avoid a targeted account-lockout DoS.
+        const ip = clientIp(new Headers(request?.headers as HeadersInit));
+        if (!rateLimit(`web-login:${ip}`, 20, 10 * 60 * 1000).ok) {
+          throw new Error("RATE_LIMITED");
+        }
+
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 

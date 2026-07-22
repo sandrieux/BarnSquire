@@ -22,8 +22,13 @@ async function assertBarnAccess(
   }
 }
 
+// `barnId` is the barn the animal belongs to; every referenced location must
+// live in that same barn. Without this check a manager could point their
+// animal's home location at another barn's stall/pasture (cross-tenant capacity
+// DoS + name leak). A stall's barn is its building's barnId.
 async function checkLocationCapacity(
   db: import("@barnsquire/db").PrismaClient,
+  barnId: string,
   stallId: string | undefined,
   pastureId: string | undefined,
   excludeAnimalId?: string
@@ -31,9 +36,14 @@ async function checkLocationCapacity(
   if (stallId) {
     const stall = await db.stall.findUnique({
       where: { id: stallId },
-      include: { homeAnimals: { where: { id: { not: excludeAnimalId } } } },
+      include: {
+        building: { select: { barnId: true } },
+        homeAnimals: { where: { id: { not: excludeAnimalId } } },
+      },
     });
-    if (!stall) throw new TRPCError({ code: "NOT_FOUND", message: "Stall not found" });
+    if (!stall || stall.building.barnId !== barnId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Stall not found" });
+    }
     if (stall.homeAnimals.length >= stall.maxCapacity) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -46,7 +56,9 @@ async function checkLocationCapacity(
       where: { id: pastureId },
       include: { homeAnimals: { where: { id: { not: excludeAnimalId } } } },
     });
-    if (!pasture) throw new TRPCError({ code: "NOT_FOUND", message: "Pasture not found" });
+    if (!pasture || pasture.barnId !== barnId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Pasture not found" });
+    }
     if (pasture.homeAnimals.length >= pasture.maxCapacity) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -126,7 +138,7 @@ export const animalRouter = router({
     .input(createAnimalSchema)
     .mutation(async ({ ctx, input }) => {
       await assertBarnAccess(ctx.db, ctx.session.user.id, input.barnId);
-      await checkLocationCapacity(ctx.db, input.homeStallId, input.homePastureId);
+      await checkLocationCapacity(ctx.db, input.barnId, input.homeStallId, input.homePastureId);
       return ctx.db.animal.create({ data: input });
     }),
 
@@ -160,6 +172,7 @@ export const animalRouter = router({
       await assertBarnAccess(ctx.db, ctx.session.user.id, animal.barnId);
       await checkLocationCapacity(
         ctx.db,
+        animal.barnId,
         input.homeStallId,
         input.homePastureId,
         animal.id

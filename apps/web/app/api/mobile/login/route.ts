@@ -3,6 +3,7 @@ import { db } from "@barnsquire/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { signAccessToken, signRefreshToken } from "@/lib/mobile-auth";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 // Mobile login: exchange email/password for an access + refresh token pair.
 // Mirrors the credential check in lib/auth.ts `authorize()`, but returns tokens
@@ -14,6 +15,15 @@ const loginSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // Throttle online password brute-force / credential stuffing per source.
+  const limit = rateLimit(`mobile-login:${clientIp(req.headers)}`, 20, 10 * 60 * 1000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) {
@@ -30,7 +40,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  const claims = { sub: user.id, email: user.email, name: user.name };
+  const claims = {
+    sub: user.id,
+    email: user.email,
+    name: user.name,
+    tokenVersion: user.tokenVersion,
+  };
   const [accessToken, refreshToken] = await Promise.all([
     signAccessToken(claims),
     signRefreshToken(claims),

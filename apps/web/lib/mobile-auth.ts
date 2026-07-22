@@ -16,12 +16,14 @@ export interface MobileUserClaims {
   sub: string; // user id
   email?: string | null;
   name?: string | null;
+  tokenVersion: number; // must match User.tokenVersion to remain valid
 }
 
 export interface MobileTokenPayload extends JWTPayload {
   email?: string | null;
   name?: string | null;
   type: TokenType;
+  tokenVersion?: number;
 }
 
 function getSecret(): Uint8Array {
@@ -33,7 +35,12 @@ function getSecret(): Uint8Array {
 }
 
 async function sign(claims: MobileUserClaims, type: TokenType, ttl: string): Promise<string> {
-  return new SignJWT({ email: claims.email ?? null, name: claims.name ?? null, type })
+  return new SignJWT({
+    email: claims.email ?? null,
+    name: claims.name ?? null,
+    type,
+    tokenVersion: claims.tokenVersion,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.sub)
     .setIssuer(ISSUER)
