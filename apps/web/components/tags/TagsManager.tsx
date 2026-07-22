@@ -76,6 +76,67 @@ async function renderPngBlob(text: string, label: string): Promise<Blob> {
   return await new Promise<Blob>((resolve) => out.toBlob((b) => resolve(b!), "image/png"));
 }
 
+// Crop a bitmap to its ink bounding box so the STL scaler fills the label band
+// tightly instead of scaling around whitespace.
+function trimBitmap(rows: boolean[][]): boolean[][] {
+  const has = (r: boolean[]) => r.some(Boolean);
+  let top = 0, bot = rows.length - 1;
+  while (top <= bot && !has(rows[top]!)) top++;
+  while (bot >= top && !has(rows[bot]!)) bot--;
+  if (bot < top) return [];
+  let left = Infinity, right = -1;
+  for (let r = top; r <= bot; r++) {
+    const row = rows[r]!;
+    for (let c = 0; c < row.length; c++) if (row[c]) { left = Math.min(left, c); right = Math.max(right, c); }
+  }
+  const out: boolean[][] = [];
+  for (let r = top; r <= bot; r++) out.push(rows[r]!.slice(left, right + 1));
+  return out;
+}
+
+// Rasterize a single line of text to a trimmed ink bitmap (row 0 = top) for the
+// STL emboss. Shrinks the font to fit the tag width, then truncates with "…".
+function rasterizeLabel(text: string): boolean[][] {
+  const label = (text || "").trim();
+  if (!label) return [];
+  const W = 400, H = 80;                 // 8 px/mm over a 50mm × 10mm band
+  const margin = 24;                     // ~3mm side margins
+  const availW = W - 2 * margin;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  let font = Math.round(H * 0.7);
+  const minFont = Math.round(H * 0.35);
+  const setFont = (px: number) => { ctx.font = `bold ${px}px sans-serif`; };
+  setFont(font);
+  let display = label;
+  while (ctx.measureText(display).width > availW && font > minFont) {
+    font -= 2;
+    setFont(font);
+  }
+  if (ctx.measureText(display).width > availW) {
+    while (display.length > 1 && ctx.measureText(display + "…").width > availW) display = display.slice(0, -1);
+    display += "…";
+  }
+  ctx.fillText(display, W / 2, H / 2, availW);
+
+  const px = ctx.getImageData(0, 0, W, H).data;
+  const rows: boolean[][] = [];
+  for (let y = 0; y < H; y++) {
+    const row: boolean[] = [];
+    for (let x = 0; x < W; x++) row.push(px[(y * W + x) * 4]! < 128);
+    rows.push(row);
+  }
+  return trimBitmap(rows);
+}
+
 export function TagsManager({ barnId }: { barnId: string }) {
   const t = useTranslations("tags");
   const { data, isLoading } = trpc.tag.listTargets.useQuery({ barnId });
@@ -83,6 +144,7 @@ export function TagsManager({ barnId }: { barnId: string }) {
   const [tagSizeMm, setTagSizeMm] = useState(50);
   const [moduleHeightMm, setModuleHeightMm] = useState(1.2);
   const [mountSlot, setMountSlot] = useState(true);
+  const [embossName, setEmbossName] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
 
   const sections = useMemo<{ key: string; label: string; items: TagEntry[] }[]>(() => {
@@ -112,7 +174,8 @@ export function TagsManager({ barnId }: { barnId: string }) {
     setBusy(`stl:${entry.id}`);
     try {
       const text = encodeTag({ type: entry.type, barnId, id: entry.id });
-      const blob = qrMatrixToStl(qrMatrix(text), { tagSizeMm, moduleHeightMm, mountSlot });
+      const label = embossName ? { bitmap: rasterizeLabel(entry.name) } : undefined;
+      const blob = qrMatrixToStl(qrMatrix(text), { tagSizeMm, moduleHeightMm, mountSlot, label });
       download(blob, `${entry.type}-${safeName(entry.name)}.stl`);
     } finally {
       setBusy(null);
@@ -197,6 +260,10 @@ export function TagsManager({ barnId }: { barnId: string }) {
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={mountSlot} onChange={(e) => setMountSlot(e.target.checked)} />
               {t("mountSlot")}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={embossName} onChange={(e) => setEmbossName(e.target.checked)} />
+              {t("embossName")}
             </label>
             <Button variant="outline" onClick={onPrintSheet} disabled={busy !== null}>
               <Printer className="h-4 w-4 mr-2" /> {t("printSheet")}

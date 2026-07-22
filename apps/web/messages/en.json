@@ -122,6 +122,7 @@
     "tagSizeMm": "Tag size (mm)",
     "moduleHeightMm": "Module height (mm)",
     "mountSlot": "Zip-tie mount slot",
+    "embossName": "Emboss name",
     "scanHint": "For best scanning, swap filament color at the raised-module layer or paint the raised squares a contrasting color.",
     "printSheet": "Print sheet",
     "png": "PNG",

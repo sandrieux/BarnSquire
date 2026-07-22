@@ -122,6 +122,7 @@
     "tagSizeMm": "Taille de l’étiquette (mm)",
     "moduleHeightMm": "Hauteur des modules (mm)",
     "mountSlot": "Fente pour attache autobloquante",
+    "embossName": "Graver le nom",
     "scanHint": "Pour une meilleure lecture, changez la couleur du filament à la couche des modules en relief ou peignez les carrés en relief d’une couleur contrastante.",
     "printSheet": "Feuille à imprimer",
     "png": "PNG",

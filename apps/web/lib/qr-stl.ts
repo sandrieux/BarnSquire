@@ -6,7 +6,7 @@
 // standard, reliable approach for relief-on-plate prints.
 
 export interface QrStlOptions {
-  /** Overall tag width/height in mm (square). */
+  /** QR/tag width in mm (the QR area is square; a label band grows the height). */
   tagSizeMm?: number;
   /** Plate thickness in mm. */
   baseThicknessMm?: number;
@@ -18,15 +18,20 @@ export interface QrStlOptions {
   borderMm?: number;
   /** Add a zip-tie mount loop above the top edge. */
   mountSlot?: boolean;
+  /** Optional embossed label below the QR. `bitmap` is rows top→bottom, true = ink. */
+  label?: { bitmap: boolean[][] };
+  /** Height in mm of the label band added below the QR when `label` is set. */
+  labelBandMm?: number;
 }
 
-const DEFAULTS: Required<QrStlOptions> = {
+const DEFAULTS = {
   tagSizeMm: 50,
   baseThicknessMm: 2,
   moduleHeightMm: 1.2,
   quietZoneModules: 4,
   borderMm: 0,
   mountSlot: true,
+  labelBandMm: 10,
 };
 
 type Vec3 = [number, number, number];
@@ -79,6 +84,45 @@ function rectRing(
   box(tris, hx1, hy0, z0, ox1, hy1, z1);          // right bar
 }
 
+// Emboss a bitmap (rows top→bottom, true = ink) as raised boxes, scaled to fit
+// and centered within the rectangle [rx0,ry0]–[rx1,ry1], rising z0→z1. Merges
+// consecutive ink pixels in each row into one box (row-run coalescing) so text —
+// mostly horizontal strokes — doesn't explode the triangle count.
+function embossBitmap(
+  tris: Triangle[],
+  bitmap: boolean[][],
+  rx0: number, ry0: number, rx1: number, ry1: number,
+  z0: number, z1: number
+) {
+  const bh = bitmap.length;
+  const bw = bh ? bitmap[0]!.length : 0;
+  if (!bw || !bh) return;
+
+  const availW = rx1 - rx0;
+  const availH = ry1 - ry0;
+  const cell = Math.min(availW / bw, availH / bh);
+  if (cell <= 0) return;
+
+  const blockW = bw * cell;
+  const blockH = bh * cell;
+  const xoff = rx0 + (availW - blockW) / 2;
+  const yoff = ry0 + (availH - blockH) / 2;
+
+  for (let r = 0; r < bh; r++) {
+    const line = bitmap[r]!;
+    // Row 0 is the top of the text, so it maps to the highest y.
+    const y0 = yoff + (bh - 1 - r) * cell;
+    let c = 0;
+    while (c < bw) {
+      if (!line[c]) { c++; continue; }
+      let c1 = c;
+      while (c1 < bw && line[c1]) c1++;
+      box(tris, xoff + c * cell, y0, z0, xoff + c1 * cell, y0 + cell, z1);
+      c = c1;
+    }
+  }
+}
+
 function serializeBinaryStl(tris: Triangle[]): ArrayBuffer {
   const buf = new ArrayBuffer(84 + tris.length * 50);
   const dv = new DataView(buf);
@@ -110,21 +154,26 @@ export function qrMatrixToStl(modules: boolean[][], options: QrStlOptions = {}):
   const size = o.tagSizeMm;
   const base = o.baseThicknessMm;
   const top = base + o.moduleHeightMm;
+  // A label adds a band below the QR; the QR itself stays a `size`×`size` square
+  // at the top, so its scannability is unchanged — the tag just gets taller.
+  const band = o.label ? o.labelBandMm : 0;
+  const plateH = size + band;
 
-  // Base plate.
-  box(tris, 0, 0, 0, size, size, base);
+  // Base plate (rectangular when a label band is present).
+  box(tris, 0, 0, 0, size, plateH, base);
 
-  // Optional raised rim around the perimeter.
+  // Optional raised rim around the whole perimeter.
   if (o.borderMm > 0) {
     rectRing(
       tris,
-      0, 0, size, size,
-      o.borderMm, o.borderMm, size - o.borderMm, size - o.borderMm,
+      0, 0, size, plateH,
+      o.borderMm, o.borderMm, size - o.borderMm, plateH - o.borderMm,
       base, top
     );
   }
 
-  // The code + its quiet zone live inside the rim.
+  // QR code + its quiet zone fill the top `size`×`size` square (shifted up by the
+  // band). The band occupies y ∈ [0, band].
   const inner = size - 2 * o.borderMm;
   const pitch = inner / (n + 2 * o.quietZoneModules);
   const origin = o.borderMm + o.quietZoneModules * pitch;
@@ -134,22 +183,29 @@ export function qrMatrixToStl(modules: boolean[][], options: QrStlOptions = {}):
     for (let col = 0; col < n; col++) {
       if (!line[col]) continue;
       const x0 = origin + col * pitch;
-      // Flip rows so row 0 is at the top (y high).
-      const y0 = origin + (n - 1 - row) * pitch;
+      // Flip rows so row 0 is at the top (y high); +band lifts the code above the label.
+      const y0 = band + origin + (n - 1 - row) * pitch;
       box(tris, x0, y0, base, x0 + pitch, y0 + pitch, top);
     }
   }
 
-  // Zip-tie mount loop centered above the top edge.
+  // Embossed name in the bottom band.
+  if (o.label) {
+    const mx = Math.max(o.borderMm, 2);
+    const py = Math.max(o.borderMm, 1.5);
+    embossBitmap(tris, o.label.bitmap, mx, py, size - mx, band - py, base, top);
+  }
+
+  // Zip-tie mount loop centered above the top edge of the plate.
   if (o.mountSlot) {
     const cx = size / 2;
     const tabW = Math.min(18, size * 0.4);
     const tabH = 10;
     const holeW = tabW * 0.5;
     const holeH = 4;
-    const oy0 = size - 2;            // overlap the plate so it fuses
-    const oy1 = size + tabH;
-    const hy0 = size + 2;
+    const oy0 = plateH - 2;            // overlap the plate so it fuses
+    const oy1 = plateH + tabH;
+    const hy0 = plateH + 2;
     rectRing(
       tris,
       cx - tabW / 2, oy0, cx + tabW / 2, oy1,
