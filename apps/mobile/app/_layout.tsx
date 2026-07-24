@@ -72,7 +72,10 @@ function RootNavigator() {
   if (status === "loading") return <Loading />;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    // headerBackButtonDisplayMode "minimal" shows just the chevron on pushed
+    // screens; otherwise iOS labels the back button with the previous route's
+    // title, which for the tab group is the bare route name "(tabs)".
+    <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: "minimal" }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="lock" />
