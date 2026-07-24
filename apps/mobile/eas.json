@@ -22,17 +22,13 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://barnsquire.lysranch.com"
-      }
+      "environment": "preview"
     },
     "production": {
       "autoIncrement": true,
       "ios": { "image": "latest" },
       "channel": "production",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://barnsquire.lysranch.com"
-      }
+      "environment": "production"
     }
   },
   "submit": {

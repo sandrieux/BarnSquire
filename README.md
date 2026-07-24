@@ -24,6 +24,10 @@ who works in the barn.
 - **Feed stock** — track servings on hand per feed type; days-left is predicted
   from the active feeding schedules and low-stock refill reminders surface on
   the Today view
+- **QR tags** — generate printable PNG and 3D-printable STL tags for barns,
+  locations, and animals; the mobile app scans them to jump straight to a stall,
+  pasture, or animal. See the [QR tag printing guide](docs/qr-tag-printing.md) for
+  recommended print settings
 - **Multi-language** — English, Français (Canada), Français (France)
 - **Mobile app** — an Expo/React Native companion app ([apps/mobile](apps/mobile))
   with offline reads, queued writes, push notification reminders, camera/document
