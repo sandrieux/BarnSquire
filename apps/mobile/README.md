@@ -94,7 +94,39 @@ eas build --profile production   --platform all
 
 TestFlight (iOS) and Play internal testing (Android) are the quickest ways to get
 it onto staff phones. Store release needs an Apple Developer account ($99/yr) and
-Google Play ($25 one-time). Set the real API URL per profile in `eas.json`.
+Google Play ($25 one-time).
+
+### API URL / environment variables
+
+`EXPO_PUBLIC_API_URL` (the backend base URL) is an **EAS-hosted environment
+variable** for the `production` and `preview` environments, referenced by the
+matching build profiles through `"environment": "<env>"` in `eas.json` (so
+`eas build` and `eas update` read one source and can't diverge). Manage it with:
+
+```bash
+eas env:list production
+eas env:create --environment production --name EXPO_PUBLIC_API_URL --value https://… --visibility plaintext
+```
+
+`development`/`device` builds keep an inline localhost value in `eas.json`; local
+dev (`expo start`) reads `apps/mobile/.env.local` (gitignored). If the var is unset
+at export time, `app.config.ts` falls back to the **production** URL — never
+localhost — so a mis-enved export can't reset installed apps to a dev server.
+
+### OTA updates (EAS Update)
+
+JS-only changes ship over-the-air to installed builds (requires a build made
+after expo-updates was added). Always pass `--environment` so the export inlines
+the same API URL the build uses:
+
+```bash
+eas update --channel production --environment production   # preview: --channel preview --environment preview
+```
+
+An update applies on the second cold start (first launch downloads it in the
+background, the next launch runs it). Bump `version` in `app.config.ts` whenever
+native code/deps change, so an OTA JS update never lands on an incompatible
+binary (runtimeVersion policy is `appVersion`).
 
 ## Type-check
 
