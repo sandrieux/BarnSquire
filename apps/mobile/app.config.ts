@@ -4,6 +4,14 @@ import type { ExpoConfig, ConfigContext } from "expo/config";
 // `extra`), so the same binary can point at dev / staging / prod.
 export default ({ config }: ConfigContext): ExpoConfig => {
   const projectId = process.env.EAS_PROJECT_ID ?? "5fc846da-9243-4d5c-b1d2-cc03fbb4f0a6";
+  // Fallback API base when EXPO_PUBLIC_API_URL isn't set at export time. This is
+  // the PRODUCTION url on purpose: `eas update` (unlike `eas build`) does NOT
+  // read eas.json build-profile env, and apps/mobile/.env.local is gitignored,
+  // so a missing var must never silently fall back to localhost — that value
+  // gets baked into the OTA manifest and would reset every installed app to a
+  // dev server. Local dev opts into localhost explicitly via .env.local or the
+  // development/device build profiles.
+  const fallbackApiUrl = "https://barnsquire.lysranch.com";
   return {
     ...config,
     name: "BarnSquire",
@@ -78,7 +86,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "./plugins/withDisableScriptSandboxing",
     ],
     extra: {
-      apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000",
+      apiUrl: process.env.EXPO_PUBLIC_API_URL ?? fallbackApiUrl,
       // EAS project id (also used for Expo push token registration). Not secret.
       eas: { projectId },
     },
