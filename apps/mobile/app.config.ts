@@ -10,6 +10,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: "barnsquire",
     owner: "sandrieux",
     version: "0.1.0",
+    // iOS/Android only (distributed via TestFlight/Play). Declaring this keeps
+    // `eas update` — which exports --platform=all — from trying to bundle web,
+    // which would require react-native-web that we don't ship.
+    platforms: ["ios", "android"],
     // EAS Update (OTA): JS-only changes ship over-the-air to installed builds.
     // runtimeVersion gates compatibility — a build only accepts updates with a
     // matching runtimeVersion. "appVersion" ties it to `version` above, so every
