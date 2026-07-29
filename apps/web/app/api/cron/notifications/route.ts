@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { db } from "@barnsquire/db";
 import { appRouter, createContext, createCallerFactory } from "@barnsquire/trpc";
 import { todayInTimeZone } from "@/lib/utils";
-
-// Constant-time secret comparison that also avoids leaking length via early return.
-function secretMatches(provided: string, expected: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
+import { bearerSecretMatches } from "@/lib/api-auth";
 
 // Scheduled sender for mobile push notifications. Trigger from system cron on the
 // server, e.g. once each morning:
@@ -35,9 +27,7 @@ export async function POST(req: NextRequest) {
   if (!secret) {
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
   }
-  // Header only — never the query string, which lands in proxy/access logs.
-  const provided = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  if (!secretMatches(provided, secret)) {
+  if (!bearerSecretMatches(req.headers, secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

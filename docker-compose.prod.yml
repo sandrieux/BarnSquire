@@ -43,6 +43,9 @@ services:
       STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL}
       # Shared secret for the /api/cron/notifications endpoint (push sender).
       CRON_SECRET: ${CRON_SECRET}
+      # Read-only summary endpoint for external displays (/api/integrations/summary).
+      INTEGRATION_SECRET: ${INTEGRATION_SECRET}
+      INTEGRATION_USER_EMAIL: ${INTEGRATION_USER_EMAIL}
     ports:
       - "3000:3000" # direct HTTP (host tools/cron); Caddy also fronts it over TLS
     depends_on:

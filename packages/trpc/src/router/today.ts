@@ -61,11 +61,16 @@ async function assertTaskRefsInBarn(
   }
 }
 
-type Slot = "MORNING" | "LUNCH" | "AFTERNOON" | "EVENING";
+export type Slot = "MORNING" | "LUNCH" | "AFTERNOON" | "EVENING";
+
+// Slots in chronological order — lets a caller reason about "earlier than now".
+export const SLOT_ORDER: readonly Slot[] = ["MORNING", "LUNCH", "AFTERNOON", "EVENING"];
 
 // Map a "HH:MM" time of day to a Today filter slot. Windows:
 // Morning 06:00–12:00, Lunch 12:00–13:00, Afternoon 13:00–18:00, Evening otherwise.
-function timeToSlot(hhmm: string): Slot {
+// Exported so external consumers (the integrations summary endpoint) bucket time
+// exactly the way the Today view does, instead of duplicating these windows.
+export function timeToSlot(hhmm: string): Slot {
   const [h = 0, m = 0] = hhmm.split(":").map(Number);
   const mins = h * 60 + m;
   if (mins >= 360 && mins < 720) return "MORNING";
