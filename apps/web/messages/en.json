@@ -133,5 +133,26 @@
     "pastures": "Pastures",
     "arenas": "Arenas",
     "animals": "Animals"
+  },
+  "ledger": {
+    "growth": "Growth",
+    "loading": "Loading…",
+    "noMeasurements": "No measurements recorded yet.",
+    "measurement": "Measurement",
+    "weight": "Weight",
+    "height": "Height",
+    "weightUnit": "Weight unit",
+    "heightUnit": "Height unit",
+    "needsOneMeasurement": "Enter a weight, a height, or both.",
+    "handsHint": "15.2 means 15 hands 2 inches",
+    "date": "Date",
+    "invalidDate": "Use the format YYYY-MM-DD.",
+    "units": {
+      "KG": "kg",
+      "LB": "lb",
+      "HANDS": "hh",
+      "CM": "cm",
+      "IN": "in"
+    }
   }
 }

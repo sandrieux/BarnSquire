@@ -3,6 +3,14 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { getPresignedUploadUrl, getPresignedViewUrl, deleteObject, headObject, MAX_UPLOAD_BYTES } from "../storage";
 import { assertAnimalReadAccess } from "../access";
+import {
+  createLedgerEntrySchema,
+  formatHeight,
+  formatWeight,
+  toCm,
+  toKg,
+  type LedgerCategoryOut,
+} from "@barnsquire/validators";
 
 async function assertAnimalBarnAccess(
   db: import("@barnsquire/db").PrismaClient,
@@ -26,7 +34,19 @@ async function assertAnimalBarnAccess(
 // pdf / jpg / png only, per the attachment requirement.
 const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 
-type LedgerCategoryOut = "FEEDING" | "MEDICATION" | "ACTIVITY" | "OTHER" | "APPOINTMENT";
+// Renders a MEASUREMENT entry's numbers back in the units the user typed, so a
+// "1200 lb" entry never reads back as "544.3 kg".
+function measurementDetail(e: {
+  weightKg: number | null;
+  weightUnit: string | null;
+  heightCm: number | null;
+  heightUnit: string | null;
+}): string | null {
+  const parts: string[] = [];
+  if (e.weightKg != null) parts.push(formatWeight(e.weightKg, (e.weightUnit ?? "KG") as never));
+  if (e.heightCm != null) parts.push(formatHeight(e.heightCm, (e.heightUnit ?? "CM") as never));
+  return parts.length ? parts.join(" · ") : null;
+}
 
 type LedgerItem = {
   id: string;
@@ -73,7 +93,7 @@ export const ledgerRouter = router({
           source: "custom" as const,
           category: e.category as LedgerCategoryOut,
           title: e.title,
-          detail: null,
+          detail: e.category === "MEASUREMENT" ? measurementDetail(e) : null,
           notes: e.notes,
           date: e.occurredAt,
           status: null,
@@ -148,27 +168,43 @@ export const ledgerRouter = router({
       return { uploadUrl, storageKey };
     }),
 
+  // Time series for the growth chart. Deliberately NOT derived from getEntries:
+  // that query presigns a URL for every attachment on every call, which would
+  // make rendering a chart cost a round of S3 signing for unrelated files.
+  getMeasurements: protectedProcedure
+    .input(z.object({ animalId: z.string().cuid() }))
+    .query(async ({ ctx, input }) => {
+      await assertAnimalReadAccess(ctx.db, ctx.session.user.id, input.animalId);
+      const rows = await ctx.db.ledgerEntry.findMany({
+        where: {
+          animalId: input.animalId,
+          category: "MEASUREMENT",
+          OR: [{ weightKg: { not: null } }, { heightCm: { not: null } }],
+        },
+        select: {
+          id: true,
+          occurredAt: true,
+          weightKg: true,
+          weightUnit: true,
+          heightCm: true,
+          heightUnit: true,
+        },
+        orderBy: { occurredAt: "asc" }, // chart order, oldest first
+      });
+      // Units come along so the chart can label axes in whatever the barn
+      // actually types, rather than forcing everyone to read canonical kg/cm.
+      return rows.map((r) => ({
+        id: r.id,
+        date: r.occurredAt,
+        weightKg: r.weightKg,
+        weightUnit: r.weightUnit,
+        heightCm: r.heightCm,
+        heightUnit: r.heightUnit,
+      }));
+    }),
+
   createEntry: protectedProcedure
-    .input(
-      z.object({
-        animalId: z.string().cuid(),
-        category: z.enum(["FEEDING", "MEDICATION", "ACTIVITY", "OTHER"]),
-        title: z.string().min(1).max(200),
-        notes: z.string().max(2000).optional(),
-        occurredAt: z.coerce.date(),
-        attachments: z
-          .array(
-            z.object({
-              storageKey: z.string(),
-              fileName: z.string().min(1),
-              mimeType: z.string().refine((m) => ALLOWED_MIME.includes(m)),
-              sizeBytes: z.number().int().positive(),
-            })
-          )
-          .max(10)
-          .default([]),
-      })
-    )
+    .input(createLedgerEntrySchema)
     .mutation(async ({ ctx, input }) => {
       await assertAnimalBarnAccess(ctx.db, ctx.session.user.id, input.animalId, "CARETAKER");
       // Don't trust client storageKey / mimeType / sizeBytes: the key must match
@@ -194,6 +230,8 @@ export const ledgerRouter = router({
           };
         })
       );
+      // Convert to canonical kg/cm here — never trust a client-computed canonical
+      // value — but keep the unit the user picked so it reads back unchanged.
       return ctx.db.ledgerEntry.create({
         data: {
           animalId: input.animalId,
@@ -201,6 +239,10 @@ export const ledgerRouter = router({
           title: input.title,
           notes: input.notes,
           occurredAt: input.occurredAt,
+          weightKg: input.weight ? toKg(input.weight.value, input.weight.unit) : null,
+          weightUnit: input.weight?.unit ?? null,
+          heightCm: input.height ? toCm(input.height.value, input.height.unit) : null,
+          heightUnit: input.height?.unit ?? null,
           createdByUserId: ctx.session.user.id,
           attachments: { create: attachments },
         },

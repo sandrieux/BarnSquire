@@ -257,10 +257,29 @@ enum LedgerCategory {
   MEDICATION
   ACTIVITY
   OTHER
+  MEASUREMENT
+}
+
+enum WeightUnit {
+  KG
+  LB
+}
+
+// HANDS is the traditional horse unit: "15.2hh" means 15 hands 2 inches
+// (1 hand = 4 in), NOT 15.2 hands — see parseHands in @barnsquire/validators.
+enum HeightUnit {
+  HANDS
+  CM
+  IN
 }
 
 // Manual, dated ledger entries authored by users. The Today completion history
 // (TaskCompletion) is merged with these at read time to form the full ledger.
+//
+// MEASUREMENT entries carry weight and/or height (at least one, enforced by the
+// create schema). Values are stored canonically in kg/cm so the growth chart has
+// one consistent scale, alongside the unit the user actually typed so the ledger
+// reads back "1200 lb" rather than "544.3 kg".
 model LedgerEntry {
   id              String         @id @default(cuid())
   animalId        String
@@ -268,6 +287,10 @@ model LedgerEntry {
   title           String
   notes           String?
   occurredAt      DateTime       @db.Date
+  weightKg        Float?
+  weightUnit      WeightUnit?
+  heightCm        Float?
+  heightUnit      HeightUnit?
   createdByUserId String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt

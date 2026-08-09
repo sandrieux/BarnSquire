@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Calendar, Edit, ImageIcon } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { AnimalTabs } from "./AnimalTabs";
+import { GrowthChart } from "./GrowthChart";
 
 type Capacity = {
   buildings: Array<{ id: string; name: string; stalls: Array<{ id: string; name: string }> }>;
@@ -114,6 +115,10 @@ export function AnimalProfile({
           {animal.notes && <Row label="Notes">{animal.notes}</Row>}
         </CardContent>
       </Card>
+
+      {/* Not gated on readOnly — a growth chart is read-only by nature, and
+          owners viewing their animal in the portal should see it too. */}
+      <GrowthChart animalId={animal.id} />
 
       <AnimalTabs barnId={barnId} animalId={animal.id} capacity={capacity} readOnly={readOnly} />
     </div>

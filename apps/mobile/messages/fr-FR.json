@@ -119,5 +119,26 @@
   },
   "animals": {
     "filteredByLocation": "Filtré par emplacement"
+  },
+  "ledger": {
+    "growth": "Croissance",
+    "loading": "Chargement…",
+    "noMeasurements": "Aucune mesure enregistrée pour le moment.",
+    "measurement": "Mesure",
+    "weight": "Poids",
+    "height": "Taille",
+    "weightUnit": "Unité de poids",
+    "heightUnit": "Unité de taille",
+    "needsOneMeasurement": "Saisissez un poids, une taille, ou les deux.",
+    "handsHint": "15.2 signifie 15 mains 2 pouces",
+    "date": "Date",
+    "invalidDate": "Utilisez le format AAAA-MM-JJ.",
+    "units": {
+      "KG": "kg",
+      "LB": "lb",
+      "HANDS": "mains",
+      "CM": "cm",
+      "IN": "po"
+    }
   }
 }

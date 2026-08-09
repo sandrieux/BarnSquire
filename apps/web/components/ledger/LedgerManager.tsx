@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { FileText, Paperclip, Plus, Trash2, Loader2, Check, X } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -11,12 +12,21 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn, formatDate } from "@/lib/utils";
+import {
+  HEIGHT_UNITS,
+  LEDGER_CATEGORIES,
+  WEIGHT_UNITS,
+  type HeightUnit,
+  type LedgerCategory,
+  type WeightUnit,
+} from "@barnsquire/validators";
 
 const CATEGORY_BADGE: Record<string, "default" | "secondary" | "warning" | "success" | "outline"> = {
   FEEDING: "success",
   MEDICATION: "warning",
   ACTIVITY: "secondary",
   APPOINTMENT: "default",
+  MEASUREMENT: "default",
   OTHER: "outline",
 };
 
@@ -25,15 +35,23 @@ function titleCase(s: string) {
 }
 
 export function LedgerManager({ animalId, readOnly = false }: { animalId: string; readOnly?: boolean }) {
+  // Note: the rest of this component's copy is still hardcoded English — only
+  // the measurement strings are translated so far.
+  const t = useTranslations("ledger");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 10));
-  const [category, setCategory] = useState<"FEEDING" | "MEDICATION" | "ACTIVITY" | "OTHER">("ACTIVITY");
+  const [category, setCategory] = useState<LedgerCategory>("ACTIVITY");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [weight, setWeight] = useState("");
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>("LB");
+  const [height, setHeight] = useState("");
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>("HANDS");
+  const isMeasurement = category === "MEASUREMENT";
 
   const utils = trpc.useUtils();
   const { data: items = [], isLoading } = trpc.ledger.getEntries.useQuery({ animalId });
@@ -47,14 +65,23 @@ export function LedgerManager({ animalId, readOnly = false }: { animalId: string
     setTitle("");
     setNotes("");
     setCategory("ACTIVITY");
+    setWeight("");
+    setHeight("");
     setOccurredAt(new Date().toISOString().slice(0, 10));
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) {
+    // Measurements get a sensible default title so the number is the only thing
+    // anyone has to type.
+    const entryTitle = title.trim() || (isMeasurement ? t("measurement") : "");
+    if (!entryTitle) {
       setError("Title is required");
+      return;
+    }
+    if (isMeasurement && !weight.trim() && !height.trim()) {
+      setError(t("needsOneMeasurement"));
       return;
     }
     setSaving(true);
@@ -91,9 +118,17 @@ export function LedgerManager({ animalId, readOnly = false }: { animalId: string
       await createEntry.mutateAsync({
         animalId,
         category,
-        title: title.trim(),
+        title: entryTitle,
         notes: notes.trim() || undefined,
         occurredAt: new Date(occurredAt),
+        weight:
+          isMeasurement && weight.trim()
+            ? { value: Number(weight), unit: weightUnit }
+            : undefined,
+        height:
+          isMeasurement && height.trim()
+            ? { value: Number(height), unit: heightUnit }
+            : undefined,
         attachments,
       });
       resetForm();
@@ -141,21 +176,84 @@ export function LedgerManager({ animalId, readOnly = false }: { animalId: string
                     value={category}
                     onChange={(e) => setCategory(e.target.value as typeof category)}
                   >
-                    <option value="FEEDING">Feeding</option>
-                    <option value="MEDICATION">Medication</option>
-                    <option value="ACTIVITY">Activity</option>
-                    <option value="OTHER">Other</option>
+                    {LEDGER_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {titleCase(c)}
+                      </option>
+                    ))}
                   </Select>
                 </div>
               </div>
+
+              {isMeasurement && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="weight">{t("weight")}</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="weight"
+                        type="number"
+                        step="any"
+                        min="0"
+                        inputMode="decimal"
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value)}
+                      />
+                      <div className="w-28 shrink-0">
+                        <Select
+                          aria-label={t("weightUnit")}
+                          value={weightUnit}
+                          onChange={(e) => setWeightUnit(e.target.value as WeightUnit)}
+                        >
+                          {WEIGHT_UNITS.map((u) => (
+                            <option key={u} value={u}>
+                              {t(`units.${u}`)}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="height">{t("height")}</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="height"
+                        type="number"
+                        step="any"
+                        min="0"
+                        inputMode="decimal"
+                        value={height}
+                        onChange={(e) => setHeight(e.target.value)}
+                      />
+                      <div className="w-28 shrink-0">
+                        <Select
+                          aria-label={t("heightUnit")}
+                          value={heightUnit}
+                          onChange={(e) => setHeightUnit(e.target.value as HeightUnit)}
+                        >
+                          {HEIGHT_UNITS.map((u) => (
+                            <option key={u} value={u}>
+                              {t(`units.${u}`)}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                    {heightUnit === "HANDS" && (
+                      <p className="text-xs text-muted-foreground">{t("handsHint")}</p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1">
                 <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
-                  required
+                  required={!isMeasurement}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Vet visit, dewormer, farrier…"
+                  placeholder={isMeasurement ? t("measurement") : "Vet visit, dewormer, farrier…"}
                 />
               </div>
               <div className="space-y-1">

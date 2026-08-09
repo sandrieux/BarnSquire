@@ -26,14 +26,30 @@ import {
 } from "../../lib/attachments";
 import { formatDate } from "../../lib/dates";
 import { colors } from "../../lib/theme";
+import { GrowthChart } from "../../components/GrowthChart";
+import {
+  HEIGHT_UNITS,
+  WEIGHT_UNITS,
+  type HeightUnit,
+  type LedgerCategory,
+  type WeightUnit,
+} from "@barnsquire/validators";
 
-type Category = "FEEDING" | "MEDICATION" | "ACTIVITY" | "OTHER";
-const CATEGORIES: Category[] = ["ACTIVITY", "MEDICATION", "FEEDING", "OTHER"];
+type Category = LedgerCategory;
+const CATEGORIES: Category[] = ["ACTIVITY", "MEDICATION", "FEEDING", "MEASUREMENT", "OTHER"];
+// Badge appends "22" for its fill, so these must stay 6-digit hex.
 const CATEGORY_COLOR: Record<Category, string> = {
   FEEDING: "#16a34a",
   MEDICATION: "#ea580c",
   ACTIVITY: "#2563eb",
+  MEASUREMENT: "#0891b2",
   OTHER: "#475569",
+};
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 export default function AnimalLedgerScreen() {
@@ -60,6 +76,7 @@ export default function AnimalLedgerScreen() {
           data={entries.data ?? []}
           keyExtractor={(e) => e.id}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={<GrowthChart animalId={animalId} />}
           ListEmptyComponent={<EmptyState text={t("today.noTasks")} />}
           renderItem={({ item }) => (
             <View style={styles.entry}>
@@ -128,9 +145,15 @@ function AddEntryModal({
   const [category, setCategory] = useState<Category>("ACTIVITY");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [occurredAt, setOccurredAt] = useState(todayStr());
+  const [weight, setWeight] = useState("");
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>("LB");
+  const [height, setHeight] = useState("");
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>("HANDS");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMeasurement = category === "MEASUREMENT";
 
   const getUploadUrl = trpc.ledger.getUploadUrl.useMutation();
   const createEntry = trpc.ledger.createEntry.useMutation();
@@ -139,6 +162,9 @@ function AddEntryModal({
     setCategory("ACTIVITY");
     setTitle("");
     setNotes("");
+    setOccurredAt(todayStr());
+    setWeight("");
+    setHeight("");
     setPending([]);
     setError(null);
   }
@@ -158,8 +184,18 @@ function AddEntryModal({
   }
 
   async function submit() {
-    if (!title.trim()) {
+    // Measurements default their title so the number is the only required input.
+    const entryTitle = title.trim() || (isMeasurement ? t("ledger.measurement") : "");
+    if (!entryTitle) {
       setError(t("auth.registrationFailed"));
+      return;
+    }
+    if (!DATE_RE.test(occurredAt)) {
+      setError(t("ledger.invalidDate"));
+      return;
+    }
+    if (isMeasurement && !weight.trim() && !height.trim()) {
+      setError(t("ledger.needsOneMeasurement"));
       return;
     }
     setError(null);
@@ -185,12 +221,23 @@ function AddEntryModal({
           sizeBytes: att.sizeBytes,
         });
       }
+      const [y, m, d] = occurredAt.split("-").map(Number);
       await createEntry.mutateAsync({
         animalId,
         category,
-        title: title.trim(),
+        title: entryTitle,
         notes: notes.trim() || undefined,
-        occurredAt: new Date(),
+        // Local midnight, not `new Date("YYYY-MM-DD")` which is UTC and can
+        // land a day early (the gotcha documented in CLAUDE.md).
+        occurredAt: new Date(y!, m! - 1, d!),
+        weight:
+          isMeasurement && weight.trim()
+            ? { value: Number(weight), unit: weightUnit }
+            : undefined,
+        height:
+          isMeasurement && height.trim()
+            ? { value: Number(height), unit: heightUnit }
+            : undefined,
         attachments: uploaded,
       });
       reset();
@@ -227,8 +274,85 @@ function AddEntryModal({
           ))}
         </View>
 
+        {/* Date is editable rather than pinned to now: measurements are often
+            entered after the fact. A plain text field avoids the native
+            datetimepicker, which would break the OTA-only update path. */}
+        <Text style={styles.label}>{t("ledger.date")}</Text>
+        <TextInput
+          style={styles.input}
+          value={occurredAt}
+          onChangeText={setOccurredAt}
+          placeholder="YYYY-MM-DD"
+          placeholderTextColor={colors.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        {isMeasurement ? (
+          <>
+            <Text style={styles.label}>{t("ledger.weight")}</Text>
+            <View style={styles.measureRow}>
+              <TextInput
+                style={[styles.input, styles.measureInput]}
+                value={weight}
+                onChangeText={setWeight}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                placeholderTextColor={colors.muted}
+              />
+              <View style={styles.unitRow}>
+                {WEIGHT_UNITS.map((u) => (
+                  <Pressable
+                    key={u}
+                    onPress={() => setWeightUnit(u)}
+                    style={[styles.unitChip, weightUnit === u && styles.unitChipOn]}
+                  >
+                    <Text style={[styles.unitText, weightUnit === u && styles.unitTextOn]}>
+                      {t(`ledger.units.${u}`)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <Text style={styles.label}>{t("ledger.height")}</Text>
+            <View style={styles.measureRow}>
+              <TextInput
+                style={[styles.input, styles.measureInput]}
+                value={height}
+                onChangeText={setHeight}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                placeholderTextColor={colors.muted}
+              />
+              <View style={styles.unitRow}>
+                {HEIGHT_UNITS.map((u) => (
+                  <Pressable
+                    key={u}
+                    onPress={() => setHeightUnit(u)}
+                    style={[styles.unitChip, heightUnit === u && styles.unitChipOn]}
+                  >
+                    <Text style={[styles.unitText, heightUnit === u && styles.unitTextOn]}>
+                      {t(`ledger.units.${u}`)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            {heightUnit === "HANDS" ? (
+              <Text style={styles.hint}>{t("ledger.handsHint")}</Text>
+            ) : null}
+          </>
+        ) : null}
+
         <Text style={styles.label}>{t("today.detail.details")}</Text>
-        <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Title" placeholderTextColor={colors.muted} />
+        <TextInput
+          style={styles.input}
+          value={title}
+          onChangeText={setTitle}
+          placeholder={isMeasurement ? t("ledger.measurement") : "Title"}
+          placeholderTextColor={colors.muted}
+        />
 
         <Text style={styles.label}>{t("today.detail.notes")}</Text>
         <TextInput
@@ -340,6 +464,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
   },
   catText: { fontWeight: "700", color: colors.text, fontSize: 13 },
+  measureRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  measureInput: { flex: 1 },
+  unitRow: { flexDirection: "row", gap: 6 },
+  unitChip: {
+    paddingHorizontal: 12,
+    height: 40,
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  unitChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  unitText: { fontWeight: "700", color: colors.text, fontSize: 13 },
+  unitTextOn: { color: colors.primaryText },
+  hint: { fontSize: 12, color: colors.muted },
   input: {
     backgroundColor: colors.card,
     borderWidth: 1,

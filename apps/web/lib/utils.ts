@@ -12,7 +12,12 @@ export function cn(...inputs: ClassValue[]) {
 // objects / ISO instants keep their real point in time (rendered in local zone).
 function toDisplayDate(date: Date | string): Date {
   if (typeof date === "string") {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    // Matches a bare "YYYY-MM-DD" and the way Prisma serializes a date-only
+    // (@db.Date) column over HTTP: "YYYY-MM-DDT00:00:00.000Z". Both are calendar
+    // days with no meaningful time, so rebuild them at LOCAL midnight — otherwise
+    // they render a day early anywhere west of UTC. Genuine timestamps (a real
+    // time-of-day) deliberately don't match and keep their existing behaviour.
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z)?$/.exec(date);
     if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   }
   return new Date(date);
