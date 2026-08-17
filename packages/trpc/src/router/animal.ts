@@ -145,11 +145,26 @@ export const animalRouter = router({
   update: protectedProcedure
     .input(updateAnimalSchema)
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
+      const { id, homeStallId, homePastureId, ...data } = input;
       const animal = await ctx.db.animal.findUnique({ where: { id } });
       if (!animal) throw new TRPCError({ code: "NOT_FOUND" });
       await assertBarnAccess(ctx.db, ctx.session.user.id, animal.barnId);
-      return ctx.db.animal.update({ where: { id }, data });
+      // Same capacity/cross-barn guard create and setHomeLocation apply —
+      // without it the edit form can move an animal into a full stall.
+      await checkLocationCapacity(ctx.db, animal.barnId, homeStallId, homePastureId, id);
+      return ctx.db.animal.update({
+        where: { id },
+        data: {
+          ...data,
+          // The edit form submits the home location as an either/or pair, so an
+          // omitted side means "cleared". Prisma ignores `undefined`, which
+          // would leave the previous stall/pasture attached and show the animal
+          // in two locations at once — so coerce to null explicitly, exactly as
+          // setHomeLocation does.
+          homeStallId: homeStallId ?? null,
+          homePastureId: homePastureId ?? null,
+        },
+      });
     }),
 
   archive: protectedProcedure
