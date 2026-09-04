@@ -16,7 +16,12 @@ import { Badge, Card, EmptyState, ErrorNote, Loading } from "../../components/ui
 import { useBarn } from "../../lib/barn";
 import { trpc } from "../../lib/trpc";
 import { addDays, currentSlot, formatDate, todayInTimeZone } from "../../lib/dates";
-import { completionKeyFor, type TaskType } from "../../lib/tasks";
+import {
+  completionKeyFor,
+  groupLabel,
+  splitCompleted,
+  type TaskType,
+} from "../../lib/tasks";
 import { colors, SLOTS, taskColors, type SlotFilter } from "../../lib/theme";
 
 type EffStatus = "done" | "skipped" | "none";
@@ -140,6 +145,50 @@ export default function TodayScreen() {
 
   const refillCount = refills.data?.length ?? 0;
 
+  type TodayGroup = NonNullable<typeof groupsQuery.data>[number];
+  type TodayTask = TodayGroup["tasks"][number];
+
+  // The row renders both inside its location group and in the Completed section,
+  // so it lives here instead of being duplicated. `context` labels a completed
+  // row with the location it came from, which it loses along with its header.
+  const renderTask = (task: TodayTask, context?: string) => {
+    const done = isDone(task);
+    const skipped = effStatus(task) === "skipped";
+    return (
+      <Card key={`${task.taskType}-${task.id}`} style={styles.taskCard}>
+        <Pressable style={styles.checkArea} onPress={() => toggle(task)} disabled={skipped}>
+          <Ionicons
+            name={done ? "checkmark-circle" : skipped ? "close-circle" : "ellipse-outline"}
+            size={26}
+            color={done ? colors.success : skipped ? colors.muted : colors.border}
+          />
+          <View style={styles.taskBody}>
+            <View style={styles.taskTopRow}>
+              <Badge
+                label={t(`today.taskTypes.${task.taskType}`)}
+                color={taskColors[task.taskType] ?? colors.muted}
+              />
+              {task.animalName ? (
+                <Text style={styles.animalName}>{task.animalName}</Text>
+              ) : null}
+              {context ? <Text style={styles.animalName}>{context}</Text> : null}
+            </View>
+            <Text style={[styles.taskLabel, (done || skipped) && styles.taskLabelDone]}>
+              {task.label}
+            </Text>
+            {task.detail ? <Text style={styles.taskDetail}>{task.detail}</Text> : null}
+          </View>
+        </Pressable>
+        {!done && !skipped ? (
+          <Pressable onPress={() => onSkip(task)} hitSlop={6} style={styles.skipBtn}>
+            <Text style={styles.skipText}>{t("today.skipped")}</Text>
+          </Pressable>
+        ) : null}
+      </Card>
+    );
+  };
+
+
   return (
     <Screen
       title={t("today.title")}
@@ -224,74 +273,37 @@ export default function TodayScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.listContent}>
           {(() => {
-            const visibleGroups = groups
-              .map((g) => ({
-                ...g,
-                tasks: g.tasks.filter((task) => slot === "ALL" || task.slot === slot),
-              }))
-              .filter((g) => g.tasks.length > 0);
+            const filtered = groups.map((g) => ({
+              ...g,
+              tasks: g.tasks.filter((task) => slot === "ALL" || task.slot === slot),
+            }));
+            // Finished work drops out of its location group into one trailing
+            // section so only outstanding tasks stay up top. Skipped tasks
+            // deliberately stay put next to their neighbours.
+            const { pending, completed } = splitCompleted(filtered, isDone);
 
-            if (visibleGroups.length === 0) {
+            if (pending.length === 0 && completed.length === 0) {
               return <EmptyState text={t("today.noTasks")} />;
             }
 
-            return visibleGroups.map((g) => (
-              <View key={g.id} style={styles.group}>
-                <Text style={styles.groupTitle}>
-                  {g.buildingName ? `${g.buildingName} · ` : ""}
-                  {g.name}
-                </Text>
-                {g.tasks.map((task) => {
-                  const done = isDone(task);
-                  const skipped = effStatus(task) === "skipped";
-                  return (
-                    <Card key={`${task.taskType}-${task.id}`} style={styles.taskCard}>
-                      <Pressable
-                        style={styles.checkArea}
-                        onPress={() => toggle(task)}
-                        disabled={skipped}
-                      >
-                        <Ionicons
-                          name={
-                            done
-                              ? "checkmark-circle"
-                              : skipped
-                                ? "close-circle"
-                                : "ellipse-outline"
-                          }
-                          size={26}
-                          color={done ? colors.success : skipped ? colors.muted : colors.border}
-                        />
-                        <View style={styles.taskBody}>
-                          <View style={styles.taskTopRow}>
-                            <Badge
-                              label={t(`today.taskTypes.${task.taskType}`)}
-                              color={taskColors[task.taskType] ?? colors.muted}
-                            />
-                            {task.animalName ? (
-                              <Text style={styles.animalName}>{task.animalName}</Text>
-                            ) : null}
-                          </View>
-                          <Text
-                            style={[styles.taskLabel, (done || skipped) && styles.taskLabelDone]}
-                          >
-                            {task.label}
-                          </Text>
-                          {task.detail ? (
-                            <Text style={styles.taskDetail}>{task.detail}</Text>
-                          ) : null}
-                        </View>
-                      </Pressable>
-                      {!done && !skipped ? (
-                        <Pressable onPress={() => onSkip(task)} hitSlop={6} style={styles.skipBtn}>
-                          <Text style={styles.skipText}>{t("today.skipped")}</Text>
-                        </Pressable>
-                      ) : null}
-                    </Card>
-                  );
-                })}
-              </View>
-            ));
+            return (
+              <>
+                {pending.map((g) => (
+                  <View key={g.id} style={styles.group}>
+                    <Text style={styles.groupTitle}>{groupLabel(g)}</Text>
+                    {g.tasks.map((task) => renderTask(task))}
+                  </View>
+                ))}
+                {completed.length > 0 ? (
+                  <View style={styles.group}>
+                    <Text style={styles.groupTitle}>
+                      {t("today.completedSection")} · {completed.length}
+                    </Text>
+                    {completed.map(({ task, locationName }) => renderTask(task, locationName))}
+                  </View>
+                ) : null}
+              </>
+            );
           })()}
         </ScrollView>
       )}

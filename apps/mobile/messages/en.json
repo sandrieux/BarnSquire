@@ -30,6 +30,7 @@
     "noTasks": "No tasks for this day.",
     "viewDetails": "View details",
     "skipped": "Skipped",
+    "completedSection": "Completed",
     "slots": {
       "ALL": "All",
       "MORNING": "Morning",
